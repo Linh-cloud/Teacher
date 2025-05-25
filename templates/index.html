@@ -13,10 +13,41 @@
         <button class="btn btn-primary mt-2" type="submit" name="action" value="show">Hiển thị bảng</button>
         <button class="btn btn-warning mt-2" type="submit" name="action" value="check_duplicates">Kiểm tra trùng giáo viên</button>
     </form>
-    {% if table_html %}
+    {% if headers %}
         <h5>Bảng thời khóa biểu:</h5>
         <div style="overflow-x:auto;">
-            {{ table_html | safe }}
+        <table class="table table-bordered" style="font-size:14px;">
+            <thead>
+                <tr>
+                    {% for h in headers %}
+                        <th>{{ h }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+            {% if duplicate_cells %}
+                {% for row, dups in zip(tkb_data, duplicate_cells) %}
+                    <tr>
+                        {% for col_idx, cell in enumerate(row) %}
+                            {% if col_idx in dups %}
+                                <td class="bg-danger text-white">{{ cell }}</td>
+                            {% else %}
+                                <td>{{ cell }}</td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            {% else %}
+                {% for row in tkb_data %}
+                    <tr>
+                        {% for cell in row %}
+                            <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            {% endif %}
+            </tbody>
+        </table>
         </div>
     {% endif %}
 </div>
