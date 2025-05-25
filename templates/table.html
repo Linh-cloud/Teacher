@@ -7,6 +7,15 @@
         </tr>
     </thead>
     <tbody>
+    {% for row in tkb_data %}
+        <tr>
+            {% for cell in row %}
+                <td>{{ cell }}</td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </tbody>
+    <tbody>
     {% for row, dups in zip(tkb_data, duplicate_cells) %}
         <tr>
             {% for col_idx, cell in enumerate(row) %}
