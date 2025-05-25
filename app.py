@@ -67,17 +67,29 @@ def index():
             session['headers'] = pickle.dumps(headers)
             session['tkb_data'] = pickle.dumps(tkb_data)
             session['num_classes'] = num_classes
-        # Nếu chỉ bấm nút, lấy dữ liệu từ session
         else:
             headers = pickle.loads(session.get('headers', pickle.dumps([])))
             tkb_data = pickle.loads(session.get('tkb_data', pickle.dumps([])))
             num_classes = session.get('num_classes', 0)
 
+            # Xử lý khi Lưu chỉnh sửa
+            if action == 'save_edit':
+                new_data = []
+                for row_idx, row in enumerate(tkb_data):
+                    new_row = []
+                    for col_idx, cell in enumerate(row):
+                        field_name = f"cell_{row_idx}_{col_idx}"
+                        new_value = request.form.get(field_name, cell)
+                        new_row.append(new_value)
+                    new_data.append(new_row)
+                tkb_data = new_data
+                session['tkb_data'] = pickle.dumps(tkb_data)
+
         # Kiểm tra trùng giáo viên
         if action == 'check_duplicates':
             duplicate_cells = check_duplicates(tkb_data, num_classes)
+
     else:
-        # Nếu GET và đã có session, tự động hiển thị bảng
         if 'headers' in session and 'tkb_data' in session:
             headers = pickle.loads(session['headers'])
             tkb_data = pickle.loads(session['tkb_data'])
@@ -88,5 +100,5 @@ def index():
         tkb_data=tkb_data,
         duplicate_cells=duplicate_cells,
         zip=zip,
-        enumerate=enumerate   # Thêm dòng này!
+        enumerate=enumerate
     )
