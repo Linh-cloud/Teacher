@@ -49,7 +49,6 @@ def index():
     headers = []
     tkb_data = []
     duplicate_cells = None
-    action = None
     if request.method == 'POST':
         file = request.files.get('tkb_file')
         action = request.form.get('action')
