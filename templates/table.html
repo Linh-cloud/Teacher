@@ -1,0 +1,18 @@
+<table class="table table-bordered" style="font-size:14px;">
+    <thead>
+        <tr>
+            {% for h in headers %}
+                <th>{{ h }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for row in tkb_data %}
+        <tr>
+            {% for cell in row %}
+                <td>{{ cell }}</td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
