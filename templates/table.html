@@ -15,4 +15,17 @@
         </tr>
     {% endfor %}
     </tbody>
+    <tbody>
+    {% for row, dups in zip(tkb_data, duplicate_cells) %}
+        <tr>
+            {% for col_idx, cell in enumerate(row) %}
+                {% if col_idx in dups %}
+                    <td class="bg-danger text-white">{{ cell }}</td>
+                {% else %}
+                    <td>{{ cell }}</td>
+                {% endif %}
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </tbody>
 </table>

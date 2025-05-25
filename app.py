@@ -48,3 +48,18 @@ def index():
             # Hiển thị lên HTML table
             table_html = render_template('table.html', headers=headers, tkb_data=tkb_data)
     return render_template('index.html', table_html=table_html)
+
+def check_duplicates(tkb_data, num_classes):
+    duplicate_cells = []
+    for row in tkb_data:
+        seen = {}
+        dups = []
+        for i in range(2, 2 + num_classes * 2, 2):
+            teacher = row[i + 1]
+            if teacher and teacher in seen:
+                dups.append(i + 1)
+                dups.append(seen[teacher])
+            else:
+                seen[teacher] = i + 1
+        duplicate_cells.append(list(set(dups)))
+    return duplicate_cells

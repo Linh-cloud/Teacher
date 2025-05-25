@@ -11,6 +11,7 @@
     <form method="POST" enctype="multipart/form-data" class="mb-3">
         <input class="form-control" type="file" name="tkb_file" required accept=".xlsx">
         <button class="btn btn-primary mt-2" type="submit">Tải lên & Hiển thị bảng</button>
+        <button class="btn btn-warning mt-2" type="submit" name="action" value="check_duplicates">Kiểm tra trùng giáo viên</button>
     </form>
     {% if table_html %}
         <h5>Bảng thời khóa biểu:</h5>
