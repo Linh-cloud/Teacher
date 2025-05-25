@@ -1,14 +1,16 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session
 import pandas as pd
 import os
+import pickle
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
+app.secret_key = 'Ego'  # Đặt chuỗi bí mật bất kỳ, KHÔNG để trống
 
 def process_tkb_file(filepath):
     df = pd.read_excel(filepath, sheet_name=0, header=None)
-    df[0] = df[0].ffill()  # Điền đầy cột "Thứ"
+    df[0] = df[0].ffill()
     class_labels = []
     for i in range(2, df.shape[1], 2):
         label = df.iloc[0, i]
@@ -49,17 +51,37 @@ def index():
     headers = []
     tkb_data = []
     duplicate_cells = None
+    num_classes = 0
+
     if request.method == 'POST':
         file = request.files.get('tkb_file')
         action = request.form.get('action')
+        # Nếu upload file mới
         if file and file.filename.endswith('.xlsx'):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             file.save(filepath)
             headers, tkb_data, num_classes = process_tkb_file(filepath)
-            if action == 'check_duplicates':
-                duplicate_cells = check_duplicates(tkb_data, num_classes)
+            # Lưu vào session (pickle để lưu list object)
+            session['headers'] = pickle.dumps(headers)
+            session['tkb_data'] = pickle.dumps(tkb_data)
+            session['num_classes'] = num_classes
+        # Nếu chỉ bấm nút, lấy dữ liệu từ session
+        else:
+            headers = pickle.loads(session.get('headers', pickle.dumps([])))
+            tkb_data = pickle.loads(session.get('tkb_data', pickle.dumps([])))
+            num_classes = session.get('num_classes', 0)
+
+        # Kiểm tra trùng giáo viên
+        if action == 'check_duplicates':
+            duplicate_cells = check_duplicates(tkb_data, num_classes)
+    else:
+        # Nếu GET và đã có session, tự động hiển thị bảng
+        if 'headers' in session and 'tkb_data' in session:
+            headers = pickle.loads(session['headers'])
+            tkb_data = pickle.loads(session['tkb_data'])
+            num_classes = session.get('num_classes', 0)
     return render_template(
         'index.html',
         headers=headers,
