@@ -88,4 +88,5 @@ def index():
         tkb_data=tkb_data,
         duplicate_cells=duplicate_cells,
         zip=zip
+        enumerate=enumerate   # Thêm dòng này!
     )
