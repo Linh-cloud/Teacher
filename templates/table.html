@@ -7,25 +7,26 @@
         </tr>
     </thead>
     <tbody>
-    {% for row in tkb_data %}
-        <tr>
-            {% for cell in row %}
-                <td>{{ cell }}</td>
-            {% endfor %}
-        </tr>
-    {% endfor %}
-    </tbody>
-    <tbody>
-    {% for row, dups in zip(tkb_data, duplicate_cells) %}
-        <tr>
-            {% for col_idx, cell in enumerate(row) %}
-                {% if col_idx in dups %}
-                    <td class="bg-danger text-white">{{ cell }}</td>
-                {% else %}
+    {% if duplicate_cells %}
+        {% for row, dups in zip(tkb_data, duplicate_cells) %}
+            <tr>
+                {% for col_idx, cell in enumerate(row) %}
+                    {% if col_idx in dups %}
+                        <td class="bg-danger text-white">{{ cell }}</td>
+                    {% else %}
+                        <td>{{ cell }}</td>
+                    {% endif %}
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    {% else %}
+        {% for row in tkb_data %}
+            <tr>
+                {% for cell in row %}
                     <td>{{ cell }}</td>
-                {% endif %}
-            {% endfor %}
-        </tr>
-    {% endfor %}
+                {% endfor %}
+            </tr>
+        {% endfor %}
+    {% endif %}
     </tbody>
 </table>

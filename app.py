@@ -35,31 +35,38 @@ def process_tkb_file(filepath):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    table_html = None
     if request.method == 'POST':
         file = request.files.get('tkb_file')
+        action = request.form.get('action')  # Thêm nếu có nhiều nút bấm
         if file and file.filename.endswith('.xlsx'):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             file.save(filepath)
-            # Sử dụng hàm xử lý TKB mới
             headers, tkb_data = process_tkb_file(filepath)
-            # Hiển thị lên HTML table
-            table_html = render_template('table.html', headers=headers, tkb_data=tkb_data)
-        return render_template(
-            'table.html',
-            headers=headers,
-            tkb_data=tkb_data,
-            duplicate_cells=duplicate_cells,
-            zip=zip
-        )
+            num_classes = (len(headers) - 2) // 2
+            if action == 'check_duplicates':
+                duplicate_cells = check_duplicates(tkb_data, num_classes)
+                return render_template(
+                    'table.html',
+                    headers=headers,
+                    tkb_data=tkb_data,
+                    duplicate_cells=duplicate_cells,
+                    zip=zip
+                )
+            else:
+                return render_template(
+                    'table.html',
+                    headers=headers,
+                    tkb_data=tkb_data,
+                    duplicate_cells=None  # Không truyền dups nếu chỉ hiển thị bảng!
+                )
+    # GET hoặc chưa có file
     return render_template(
         'table.html',
         headers=[],
         tkb_data=[],
-        duplicate_cells=[],
-        zip=zip
+        duplicate_cells=None
     )
 
 def check_duplicates(tkb_data, num_classes):
