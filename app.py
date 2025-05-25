@@ -47,12 +47,19 @@ def index():
             headers, tkb_data = process_tkb_file(filepath)
             # Hiển thị lên HTML table
             table_html = render_template('table.html', headers=headers, tkb_data=tkb_data)
+        return render_template(
+            'table.html',
+            headers=headers,
+            tkb_data=tkb_data,
+            duplicate_cells=duplicate_cells,
+            zip=zip
+        )
     return render_template(
         'table.html',
-        headers=headers,
-        tkb_data=tkb_data,
-        duplicate_cells=duplicate_cells,
-        zip=zip  # truyền zip vào template!
+        headers=[],
+        tkb_data=[],
+        duplicate_cells=[],
+        zip=zip
     )
 
 def check_duplicates(tkb_data, num_classes):
