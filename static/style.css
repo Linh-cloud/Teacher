@@ -73,7 +73,7 @@ body {
     overflow-x: auto;
     overflow-y: auto;
     max-width: 1800px;
-    max-height: 700px;   /* Số này bạn chỉnh theo ý */
+    max-height: 600px;   /* Số này bạn chỉnh theo ý */
     width: 100%;
     margin: 0 auto;
     border-bottom: 1px solid #ccc;
