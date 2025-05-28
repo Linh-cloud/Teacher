@@ -71,9 +71,12 @@ body {
 }
 .excel-scroll-x {
     overflow-x: auto;
-    border-bottom: 1px solid #ccc;
-    max-width: 10vw;
+    overflow-y: auto;
+    max-width: 700px;
+    max-height: 200px;   /* Số này bạn chỉnh theo ý */
+    width: 100%;
     margin: 0 auto;
+    border-bottom: 1px solid #ccc;
     padding-bottom: 0;
 }
 .excel-scroll-x::-webkit-scrollbar {
