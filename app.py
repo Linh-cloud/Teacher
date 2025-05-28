@@ -3,10 +3,44 @@ import pandas as pd
 import os
 import pickle
 from werkzeug.utils import secure_filename
+import json
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.secret_key = 'Ego'  # Đặt chuỗi bí mật bất kỳ, KHÔNG để trống
+
+def generate_teacher_day_schedule(tkb_data):
+    teacher_day_schedule = {}
+    for row_data in tkb_data:
+        weekday = row_data[0]  # "Thứ"
+        if weekday not in teacher_day_schedule:
+            teacher_day_schedule[weekday] = []
+        # Giáo viên ở cột lẻ (bắt đầu từ cột 4, 6, 8,...)
+        for col_idx in range(2, len(row_data), 2):
+            if col_idx + 1 < len(row_data):
+                teacher = row_data[col_idx + 1]
+                if teacher and teacher not in teacher_day_schedule[weekday]:
+                    teacher_day_schedule[weekday].append(teacher)
+    return teacher_day_schedule
+
+def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
+    # Đọc danh sách giáo viên từ file JSON
+    try:
+        with open(teachers_list_path, "r", encoding="utf-8") as f:
+            existing_teachers = json.load(f)["Giáo viên"]
+    except Exception:
+        existing_teachers = []
+    # Lấy thông tin giáo viên dạy theo từng ngày
+    teacher_day_schedule = generate_teacher_day_schedule(tkb_data)
+    # Khởi tạo dictionary: giáo viên -> list ngày không dạy
+    teacher_off_schedule = {}
+    for teacher in existing_teachers:
+        days_off = []
+        for weekday in teacher_day_schedule.keys():
+            if teacher not in teacher_day_schedule[weekday]:
+                days_off.append(weekday)
+        teacher_off_schedule[teacher] = days_off
+    return teacher_off_schedule, list(teacher_day_schedule.keys())
 
 def process_tkb_file(filepath):
     df = pd.read_excel(filepath, sheet_name=0, header=None)
@@ -45,6 +79,17 @@ def check_duplicates(tkb_data, num_classes):
                 seen[teacher] = i + 1
         duplicate_cells.append(list(set(dups)))
     return duplicate_cells
+
+@app.route('/teacher-off')
+def teacher_off():
+    # Lấy tkb_data từ session hoặc nơi bạn lưu
+    tkb_data = pickle.loads(session.get('tkb_data', pickle.dumps([])))
+    teacher_off_schedule, weekdays = get_teacher_off_schedule(tkb_data)
+    return render_template(
+        'teacher_off.html',
+        teacher_off_schedule=teacher_off_schedule,
+        weekdays=weekdays
+    )
 
 @app.route('/', methods=['GET', 'POST'])
 def index():

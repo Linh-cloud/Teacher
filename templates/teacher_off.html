@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Thống kê ngày nghỉ giáo viên</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div style="max-width:900px; margin:24px auto; background:#fff; padding:16px; border-radius:8px;">
+    <h3 style="text-align:center;">Thống kê ngày nghỉ của giáo viên</h3>
+    <table class="table table-bordered" style="font-size:15px;">
+        <thead>
+            <tr>
+                <th>Giáo viên</th>
+                <th>Ngày nghỉ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for teacher, days_off in teacher_off_schedule.items() %}
+                <tr>
+                    <td><b>{{ teacher }}</b></td>
+                    <td>
+                        {% if days_off %}
+                            {{ days_off | join(', ') }}
+                        {% else %}
+                            <span style="color:green">Không có ngày nghỉ</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="/" class="btn btn-secondary">Quay lại</a>
+</div>
+</body>
+</html>
