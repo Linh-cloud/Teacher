@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <title>Kiểm tra thời khóa biểu giáo viên</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <style>
+        .slider-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+    </style>
 </head>
 <body>
 <div class="container py-4">
@@ -12,6 +20,21 @@
         <div class="row mb-2">
             <div class="col">
                 <input class="form-control" type="file" name="tkb_file" accept=".xlsx">
+            </div>
+            <div class="col-auto slider-group">
+                <label for="font_size" style="margin-right:8px;">Cỡ chữ:</label>
+                <input type="range" min="10" max="28" step="1" id="font_size" name="font_size"
+                       value="{{ font_size if font_size else 14 }}"
+                       oninput="font_size_label.innerText = this.value + 'px'">
+                <span id="font_size_label">{{ font_size if font_size else 14 }}px</span>
+                <button class="btn btn-outline-secondary btn-sm" type="submit" name="action" value="zoom_out"
+                        onclick="document.getElementById('font_size').stepDown(); document.getElementById('font_size_label').innerText = document.getElementById('font_size').value + 'px';">
+                    Thu nhỏ
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" type="submit" name="action" value="zoom_in"
+                        onclick="document.getElementById('font_size').stepUp(); document.getElementById('font_size_label').innerText = document.getElementById('font_size').value + 'px';">
+                    Phóng to
+                </button>
             </div>
             <div class="col-auto">
                 <button class="btn btn-primary" type="submit" name="action" value="show">Hiển thị bảng</button>
@@ -22,7 +45,7 @@
         {% if headers %}
             <h5>Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
             <div style="overflow-x:auto;">
-            <table class="table table-bordered" style="font-size:14px;">
+            <table class="table table-bordered" style="font-size:{{font_size if font_size else 14}}px;">
                 <thead>
                     <tr>
                         {% for h in headers %}

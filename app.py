@@ -52,10 +52,19 @@ def index():
     tkb_data = []
     duplicate_cells = None
     num_classes = 0
+    font_size = 14
 
     if request.method == 'POST':
+        font_size = int(request.form.get('font_size', 14))
         file = request.files.get('tkb_file')
         action = request.form.get('action')
+
+        # Nút zoom
+        if action == "zoom_in":
+            font_size = min(font_size + 2, 28)
+        elif action == "zoom_out":
+            font_size = max(font_size - 2, 10)
+
         # Nếu upload file mới
         if file and file.filename.endswith('.xlsx'):
             filename = secure_filename(file.filename)
@@ -63,7 +72,6 @@ def index():
             os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             file.save(filepath)
             headers, tkb_data, num_classes = process_tkb_file(filepath)
-            # Lưu vào session (pickle để lưu list object)
             session['headers'] = pickle.dumps(headers)
             session['tkb_data'] = pickle.dumps(tkb_data)
             session['num_classes'] = num_classes
@@ -89,7 +97,11 @@ def index():
         if action == 'check_duplicates':
             duplicate_cells = check_duplicates(tkb_data, num_classes)
 
+        # Lưu lại cỡ chữ vào session
+        session['font_size'] = font_size
+
     else:
+        font_size = session.get('font_size', 14)
         if 'headers' in session and 'tkb_data' in session:
             headers = pickle.loads(session['headers'])
             tkb_data = pickle.loads(session['tkb_data'])
@@ -100,5 +112,9 @@ def index():
         tkb_data=tkb_data,
         duplicate_cells=duplicate_cells,
         zip=zip,
-        enumerate=enumerate
+        enumerate=enumerate,
+        font_size=font_size
     )
+
+if __name__ == '__main__':
+    app.run(debug=True)
