@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body style="margin:0; padding:0; background: #f7f7f9;">
+<button type="button" class="btn btn-info" onclick="document.getElementById('mau_tkb_img').style.display='block';">
+    👁 Xem mẫu ví dụ đầu vào
+</button>
+<div id="mau_tkb_img" style="display:none; margin-bottom:15px; text-align:center;">
+    <img src="{{ url_for('static', filename='sample.png') }}" alt="Mẫu ví dụ đầu vào" style="max-width:100%;border:1px solid #bbb;box-shadow:0 2px 8px #eaeaea;padding:4px; background:#fff;">
+    <div>
+        <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="document.getElementById('mau_tkb_img').style.display='none';">Đóng mẫu</button>
+    </div>
+</div>
 <div style="padding: 20px 0 0 0;">
     <h2 style="text-align:center;">Kiểm tra thời khóa biểu giáo viên</h2>
     <form method="POST" enctype="multipart/form-data" class="mb-3" style="text-align: center;">
@@ -36,7 +45,6 @@
                 <button class="btn btn-warning" type="submit" name="action" value="check_duplicates">Kiểm tra trùng giáo viên</button>
                 <button class="btn btn-success" type="submit" name="action" value="save_edit">Lưu chỉnh sửa</button>
                 <a href="/teacher-off" class="btn btn-info" style="margin-left:8px;">Thống kê ngày nghỉ GV</a>
-                <a href="{{ url_for('static', filename='sample.png') }}" target="_blank" class="btn btn-info" style="margin-bottom:10px;">👁 Xem mẫu ví dụ đầu vào</a>
             </div>
         </div>
         {% if headers %}
@@ -78,6 +86,5 @@
         {% endif %}
     </form>
 </div>
-
 </body>
 </html>
