@@ -72,7 +72,7 @@ body {
 .excel-scroll-x {
     overflow-x: auto;
     border-bottom: 1px solid #ccc;
-    max-width: 25px;
+    max-width: 10vw;
     margin: 0 auto;
     padding-bottom: 0;
 }
