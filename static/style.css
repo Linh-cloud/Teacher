@@ -1,33 +1,72 @@
-.slider-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 8px;
+body {
+    background: #f7f7f9;
 }
 .big-table {
-    min-width: 1800px;
-    table-layout: fixed;
+    border-collapse: collapse;
+    background: #fff;
+    min-width: unset;
     width: max-content;
+    table-layout: fixed;
+    font-size: 16px;
 }
 .big-table th, .big-table td {
+    border: 1px solid #d0d7de;
     text-align: center;
     vertical-align: middle;
-    padding: 0 !important;
+    padding: 0;
     overflow: hidden;
     white-space: nowrap;
+    width: 110px;
+    max-width: 110px;
+    height: 40px;
+    box-sizing: border-box;
+    background: #fff;
+}
+.big-table th {
+    background: #eaecee;
+    font-weight: bold;
+    font-size: 16px;
 }
 .big-input {
     width: 100%;
-    min-width: 90px;
-    max-width: 150px;
+    min-width: 80px;
+    max-width: 110px;
     height: 38px;
-    padding: 4px 2px;
-    font-weight: 500;
-    text-align: center;
-    border: none;
     background: transparent;
+    border: none;
     outline: none;
-    box-shadow: none;
+    padding: 0 2px;
+    text-align: center;
+    font-size: inherit;
+    font-weight: 500;
+    transition: background 0.08s, box-shadow 0.08s, border 0.08s;
+}
+.big-input:focus {
+    outline: none;
+    border: 2.5px solid #228B22 !important;    /* Xanh lá Excel */
+    background: #fff862 !important;             /* Vàng nhạt Excel */
+    box-shadow: 0 0 0 2.5px #54e34677;
+    z-index: 2;
+    color: #111;
+    font-weight: bold;
+    border-radius: 3px;
+}
+/* Highlight ô trùng sau lọc trùng */
+.dup-cell {
+    background: #fff862 !important;            /* Nền vàng Excel */
+    border: 2.5px solid #228B22 !important;    /* Viền xanh lá Excel */
+    color: #222 !important;
+    font-weight: bold;
+    border-radius: 3px;
+    position: relative;
+    z-index: 3;
+}
+.big-table td:hover, .big-input:hover {
+    background: #f6f8fa;
+}
+.bg-danger .big-input {
+    background: #e94545 !important;
+    color: #fff !important;
 }
 .zoom-box {
     display: inline-block;

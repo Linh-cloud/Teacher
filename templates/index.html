@@ -37,11 +37,11 @@
             <h5>Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
             <div style="overflow-x:auto; border-bottom:1px solid #ccc;">
             <div class="zoom-box" style="transform: scale({{ zoom|default(1) }});">
-            <table class="table table-bordered big-table">
+            <table class="big-table">
                 <thead>
                     <tr>
                         {% for h in headers %}
-                            <th>{{ h }}</th>
+                            <th style="width:110px;">{{ h }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
@@ -50,23 +50,15 @@
                     <tr>
                         {% if duplicate_cells %}
                             {% for col_idx, cell in enumerate(row) %}
-                                {% if col_idx in duplicate_cells[row_idx] %}
-                                    <td class="bg-danger text-white">
-                                        <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                               class="big-input">
-                                    </td>
-                                {% else %}
-                                    <td>
-                                        <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                               class="big-input">
-                                    </td>
-                                {% endif %}
+                                <td>
+                                    <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
+                                        class="big-input{% if col_idx in duplicate_cells[row_idx] %} dup-cell{% endif %}">
+                                </td>
                             {% endfor %}
                         {% else %}
                             {% for col_idx, cell in enumerate(row) %}
                                 <td>
-                                    <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                           class="big-input">
+                                    <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input">
                                 </td>
                             {% endfor %}
                         {% endif %}
