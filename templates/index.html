@@ -27,9 +27,7 @@
             padding: 2px 6px;
             font-weight: 500;
             text-align: center;
-            /* font-size thêm inline để lấy font_size động */
         }
-        /* Để bảng nhìn không bị bóp ở mobile nhỏ */
         @media (max-width: 900px) {
             .big-table { min-width: 900px; }
             .big-input { width: 70px; min-width: 60px; }
@@ -45,19 +43,17 @@
                 <input class="form-control" type="file" name="tkb_file" accept=".xlsx">
             </div>
             <div class="col-auto slider-group">
-                <label for="font_size" style="margin-right:8px;">Cỡ chữ:</label>
-                <input type="range" min="10" max="28" step="1" id="font_size" name="font_size"
-                       value="{{ font_size if font_size else 14 }}"
-                       oninput="font_size_label.innerText = this.value + 'px'">
-                <span id="font_size_label">{{ font_size if font_size else 14 }}px</span>
+                <input type="hidden" id="zoom" name="zoom" value="{{ zoom|default(1) }}">
+                <span>Cỡ bảng: </span>
                 <button class="btn btn-outline-secondary btn-sm" type="submit" name="action" value="zoom_out"
-                        onclick="document.getElementById('font_size').stepDown(); document.getElementById('font_size_label').innerText = document.getElementById('font_size').value + 'px';">
+                        onclick="document.getElementById('zoom').value = (Math.max(parseFloat(document.getElementById('zoom').value)-0.1,0.5)).toFixed(2)">
                     Thu nhỏ
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" type="submit" name="action" value="zoom_in"
-                        onclick="document.getElementById('font_size').stepUp(); document.getElementById('font_size_label').innerText = document.getElementById('font_size').value + 'px';">
+                        onclick="document.getElementById('zoom').value = (Math.min(parseFloat(document.getElementById('zoom').value)+0.1,2)).toFixed(2)">
                     Phóng to
                 </button>
+                <span id="zoom_label">{{ (zoom * 100)|round(0) if zoom else 100 }}%</span>
             </div>
             <div class="col-auto">
                 <button class="btn btn-primary" type="submit" name="action" value="show">Hiển thị bảng</button>
@@ -68,7 +64,8 @@
         {% if headers %}
             <h5>Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
             <div style="overflow-x:auto; border-bottom:1px solid #ccc;">
-            <table class="table table-bordered big-table" style="font-size:{{ font_size|default(14, true) }}px;">
+            <div id="zoom-box" style="display:inline-block; transform: scale({{ zoom|default(1) }}); transform-origin: top left;">
+            <table class="table table-bordered big-table">
                 <thead>
                     <tr>
                         {% for h in headers %}
@@ -84,14 +81,12 @@
                                 {% if col_idx in duplicate_cells[row_idx] %}
                                     <td class="bg-danger text-white">
                                         <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                               class="form-control big-input"
-                                               style="font-size:{{ font_size|default(14, true) }}px;">
+                                               class="form-control big-input">
                                     </td>
                                 {% else %}
                                     <td>
                                         <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                               class="form-control big-input"
-                                               style="font-size:{{ font_size|default(14, true) }}px;">
+                                               class="form-control big-input">
                                     </td>
                                 {% endif %}
                             {% endfor %}
@@ -99,8 +94,7 @@
                             {% for col_idx, cell in enumerate(row) %}
                                 <td>
                                     <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                           class="form-control big-input"
-                                           style="font-size:{{ font_size|default(14, true) }}px;">
+                                           class="form-control big-input">
                                 </td>
                             {% endfor %}
                         {% endif %}
@@ -108,6 +102,7 @@
                 {% endfor %}
                 </tbody>
             </table>
+            </div>
             </div>
         {% endif %}
     </form>
