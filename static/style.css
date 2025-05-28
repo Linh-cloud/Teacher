@@ -1,0 +1,39 @@
+.slider-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+.big-table {
+    min-width: 1800px;
+    table-layout: fixed;
+    width: max-content;
+}
+.big-table th, .big-table td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0 !important;
+    overflow: hidden;
+    white-space: nowrap;
+}
+.big-input {
+    width: 100%;
+    min-width: 90px;
+    max-width: 150px;
+    height: 38px;
+    padding: 4px 2px;
+    font-weight: 500;
+    text-align: center;
+    border: none;
+    background: transparent;
+    outline: none;
+    box-shadow: none;
+}
+.zoom-box {
+    display: inline-block;
+    transform-origin: top left;
+}
+@media (max-width: 900px) {
+    .big-table { min-width: 900px; }
+    .big-input { width: 70px; min-width: 60px; }
+}

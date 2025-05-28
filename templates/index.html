@@ -4,35 +4,7 @@
     <meta charset="UTF-8">
     <title>Kiểm tra thời khóa biểu giáo viên</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <style>
-        .slider-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-        .big-table {
-            min-width: 1800px;
-            table-layout: fixed;
-        }
-        .big-table th, .big-table td {
-            text-align: center;
-            vertical-align: middle;
-            padding: 2px 4px !important;
-        }
-        .big-input {
-            min-width: 90px;
-            width: 115px;
-            height: 38px;
-            padding: 2px 6px;
-            font-weight: 500;
-            text-align: center;
-        }
-        @media (max-width: 900px) {
-            .big-table { min-width: 900px; }
-            .big-input { width: 70px; min-width: 60px; }
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <div class="container py-4">
@@ -64,7 +36,7 @@
         {% if headers %}
             <h5>Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
             <div style="overflow-x:auto; border-bottom:1px solid #ccc;">
-            <div id="zoom-box" style="display:inline-block; transform: scale({{ zoom|default(1) }}); transform-origin: top left;">
+            <div class="zoom-box" style="transform: scale({{ zoom|default(1) }});">
             <table class="table table-bordered big-table">
                 <thead>
                     <tr>
@@ -81,12 +53,12 @@
                                 {% if col_idx in duplicate_cells[row_idx] %}
                                     <td class="bg-danger text-white">
                                         <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                               class="form-control big-input">
+                                               class="big-input">
                                     </td>
                                 {% else %}
                                     <td>
                                         <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                               class="form-control big-input">
+                                               class="big-input">
                                     </td>
                                 {% endif %}
                             {% endfor %}
@@ -94,7 +66,7 @@
                             {% for col_idx, cell in enumerate(row) %}
                                 <td>
                                     <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                           class="form-control big-input">
+                                           class="big-input">
                                 </td>
                             {% endfor %}
                         {% endif %}
