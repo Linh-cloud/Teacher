@@ -72,8 +72,8 @@ body {
 .excel-scroll-x {
     overflow-x: auto;
     overflow-y: auto;
-    max-width: 1500px;
-    max-height: 400px;   /* Số này bạn chỉnh theo ý */
+    max-width: 1600px;
+    max-height: 500px;   /* Số này bạn chỉnh theo ý */
     width: 100%;
     margin: 0 auto;
     border-bottom: 1px solid #ccc;
