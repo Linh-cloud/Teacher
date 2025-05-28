@@ -55,18 +55,19 @@ def index():
     zoom = 1.0
 
     if request.method == 'POST':
+        zoom = request.form.get('zoom_manual') or request.form.get('zoom')
         try:
-            zoom = float(request.form.get('zoom', 1))
+            zoom = float(zoom)
         except:
             zoom = 1.0
+        zoom = max(0.3, min(zoom, 2))  # Giới hạn zoom từ 0.3 đến 2.0
         file = request.files.get('tkb_file')
         action = request.form.get('action')
 
-        # Nút zoom
         if action == "zoom_in":
-            zoom = min(zoom + 0.1, 2)
+            zoom = min(zoom + 0.05, 2)
         elif action == "zoom_out":
-            zoom = max(zoom - 0.1, 0.3)
+            zoom = max(zoom - 0.05, 0.3)
 
         # Nếu upload file mới
         if file and file.filename.endswith('.xlsx'):
