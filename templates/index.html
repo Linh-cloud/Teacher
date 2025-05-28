@@ -39,8 +39,9 @@
         </div>
         {% if headers %}
             <h5>Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
-            <div style="display: flex; justify-content: center;">
-                <div class="excel-scroll-x" style="overflow-x:auto; overflow-y:auto; width:100%; max-width:1800px; max-height:600px; margin:0 auto;">
+            <div style="display: flex; justify-content: center; align-items: flex-start; height: auto; min-height: 0;">
+                <div class="excel-scroll-x"
+                    style="overflow-x: auto; overflow-y: auto; width: 100%; max-width: 1800px; max-height: 600px; margin: 0; padding-bottom: 0;">
                     <div class="zoom-box" style="transform: scale({{ zoom|default(1) }}); transform-origin: top left; width: max-content;">
                         <table class="big-table">
                             <thead>
