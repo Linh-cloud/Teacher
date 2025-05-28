@@ -35,38 +35,40 @@
         </div>
         {% if headers %}
             <h5>Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
-            <div class="excel-scroll-x">
-            <div class="zoom-box" style="transform: scale({{ zoom|default(1) }});">
-            <table class="big-table">
-                <thead>
-                    <tr>
-                        {% for h in headers %}
-                            <th style="width:110px;">{{ h }}</th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                {% for row_idx, row in enumerate(tkb_data) %}
-                    <tr>
-                        {% if duplicate_cells %}
-                            {% for col_idx, cell in enumerate(row) %}
-                                <td>
-                                    <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                        class="big-input{% if col_idx in duplicate_cells[row_idx] %} dup-cell{% endif %}">
-                                </td>
+            <div style="display: flex; justify-content: center;">
+                <div class="excel-scroll-x" style="overflow-x:auto; max-width: 100vw; margin: 0 auto; padding-bottom: 0;">
+                    <div class="zoom-box" style="transform: scale({{ zoom|default(1) }}); transform-origin: top left;">
+                        <table class="big-table">
+                            <thead>
+                                <tr>
+                                    {% for h in headers %}
+                                        <th style="width:110px;">{{ h }}</th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for row_idx, row in enumerate(tkb_data) %}
+                                <tr>
+                                    {% if duplicate_cells %}
+                                        {% for col_idx, cell in enumerate(row) %}
+                                            <td>
+                                                <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
+                                                    class="big-input{% if col_idx in duplicate_cells[row_idx] %} dup-cell{% endif %}">
+                                            </td>
+                                        {% endfor %}
+                                    {% else %}
+                                        {% for col_idx, cell in enumerate(row) %}
+                                            <td>
+                                                <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input">
+                                            </td>
+                                        {% endfor %}
+                                    {% endif %}
+                                </tr>
                             {% endfor %}
-                        {% else %}
-                            {% for col_idx, cell in enumerate(row) %}
-                                <td>
-                                    <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input">
-                                </td>
-                            {% endfor %}
-                        {% endif %}
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         {% endif %}
     </form>

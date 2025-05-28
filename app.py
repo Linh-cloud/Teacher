@@ -66,7 +66,7 @@ def index():
         if action == "zoom_in":
             zoom = min(zoom + 0.1, 2)
         elif action == "zoom_out":
-            zoom = max(zoom - 0.1, 0.5)
+            zoom = max(zoom - 0.1, 0.3)
 
         # Nếu upload file mới
         if file and file.filename.endswith('.xlsx'):
