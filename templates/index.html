@@ -18,7 +18,7 @@
                 <input type="hidden" id="zoom" name="zoom" value="{{ zoom|default(1) }}">
                 <span>Cỡ bảng: </span>
                 <button class="btn btn-outline-secondary btn-sm" type="submit" name="action" value="zoom_out"
-                        onclick="document.getElementById('zoom').value = (Math.max(parseFloat(document.getElementById('zoom').value)-0.1,0.5)).toFixed(2)">
+                        onclick="document.getElementById('zoom').value = (Math.max(parseFloat(document.getElementById('zoom').value)-0.1,0.3)).toFixed(2)">
                     Thu nhỏ
                 </button>
                 <button class="btn btn-outline-secondary btn-sm" type="submit" name="action" value="zoom_in"
@@ -35,7 +35,7 @@
         </div>
         {% if headers %}
             <h5>Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
-            <div style="overflow-x:auto; border-bottom:1px solid #ccc;">
+            <div class="excel-scroll-x">
             <div class="zoom-box" style="transform: scale({{ zoom|default(1) }});">
             <table class="big-table">
                 <thead>

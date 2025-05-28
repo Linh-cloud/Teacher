@@ -41,16 +41,15 @@ body {
     font-weight: 500;
     transition: background 0.08s, box-shadow 0.08s, border 0.08s;
 }
+/* KHÔNG highlight khi focus nữa */
 .big-input:focus {
     outline: none;
-    border: 2.5px solid #228B22 !important;    /* Xanh lá Excel */
-    background: #fff862 !important;             /* Vàng nhạt Excel */
-    box-shadow: 0 0 0 2.5px #54e34677;
-    z-index: 2;
-    color: #111;
+    border: none;
+    background: #fff;
+    box-shadow: none;
     font-weight: bold;
-    border-radius: 3px;
 }
+
 /* Highlight ô trùng sau lọc trùng */
 .dup-cell {
     background: #fff862 !important;            /* Nền vàng Excel */
@@ -71,6 +70,13 @@ body {
 .zoom-box {
     display: inline-block;
     transform-origin: top left;
+}
+/* Đảm bảo khung cuộn ngang luôn sát bảng */
+.excel-scroll-x {
+    overflow-x: auto;
+    border-bottom: 1px solid #ccc;
+    max-width: 100%;
+    padding-bottom: 0 !important;
 }
 @media (max-width: 900px) {
     .big-table { min-width: 900px; }
