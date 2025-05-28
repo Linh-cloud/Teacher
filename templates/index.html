@@ -77,5 +77,14 @@
         {% endif %}
     </form>
 </div>
+<button type="button" class="btn btn-info" onclick="document.getElementById('mau_tkb_img').style.display='block';">
+    👁 Xem mẫu ví dụ đầu vào
+</button>
+<div id="mau_tkb_img" style="display:none; margin-bottom:15px; text-align:center;">
+    <img src="{{ url_for('static', filename='sample.png') }}" alt="Mẫu ví dụ đầu vào" style="max-width:100%;border:1px solid #bbb;box-shadow:0 2px 8px #eaeaea;padding:4px; background:#fff;">
+    <div>
+        <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="document.getElementById('mau_tkb_img').style.display='none';">Đóng mẫu</button>
+    </div>
+</div>
 </body>
 </html>
