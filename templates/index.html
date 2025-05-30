@@ -55,8 +55,16 @@
                     <table class="big-table">
                         <thead>
                             <tr>
-                                {% for h in headers %}
-                                    <th style="width:110px;">{{ h }}</th>
+                                <th rowspan="2">Thứ</th>
+                                <th rowspan="2">Tiết</th>
+                                {% for label in class_labels %}
+                                    <th colspan="2">{{ label }}</th>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                {% for label in class_labels %}
+                                    <th>Môn</th>
+                                    <th>GV dạy</th>
                                 {% endfor %}
                             </tr>
                         </thead>

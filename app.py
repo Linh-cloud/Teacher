@@ -8,6 +8,7 @@ import json
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.secret_key = 'Ego'  # Đặt chuỗi bí mật bất kỳ, KHÔNG để trống
+class_labels = ['9A', '9B', '9C', '8A', '8B', '8C', '7A', '7B', '7C', '6A', '6B', '6C', '6D']
 
 def generate_teacher_day_schedule(tkb_data):
     teacher_day_schedule = {}
@@ -157,8 +158,8 @@ def index():
             num_classes = session.get('num_classes', 0)
     return render_template(
         'index.html',
-        headers=headers,
         tkb_data=tkb_data,
+        class_labels=class_labels,
         duplicate_cells=duplicate_cells,
         zip=zip,
         enumerate=enumerate,
