@@ -18,10 +18,11 @@
 </div>
 <div style="padding: 20px 0 0 0;">
     <h2 style="text-align:center;">Kiểm tra thời khóa biểu giáo viên</h2>
-    <form method="POST" enctype="multipart/form-data" class="mb-3" style="text-align: center;">
+    <form id="tkbForm" method="POST" enctype="multipart/form-data" class="mb-3" style="text-align: center;">
         <div class="row mb-2 align-items-center" style="justify-content:center;">
             <div class="col" style="display:inline-block;min-width:300px;">
-                <input class="form-control" type="file" name="tkb_file" accept=".xlsx">
+                <!-- Đổi id cho input file -->
+                <input class="form-control" type="file" name="tkb_file" accept=".xlsx" id="tkb_file_input">
             </div>
             <div class="zoom-slider-group" style="display:inline-flex; align-items:center; gap:8px; margin-bottom:12px;">
                 <button type="button" class="zoom-btn" onclick="updateZoom(-0.05)">&#8722;</button>
@@ -33,7 +34,7 @@
                 <input type="hidden" id="zoom" name="zoom" value="{{ zoom|default(1) }}">
             </div>
             <div class="col-auto" style="display:inline-block;">
-                <button class="btn btn-primary" type="submit" name="action" value="show">Hiển thị bảng</button>
+                <!-- Ẩn nút "Hiển thị bảng" vì không cần -->
                 <button class="btn btn-warning" type="submit" name="action" value="check_duplicates">Kiểm tra trùng giáo viên</button>
                 <button class="btn btn-success" type="submit" name="action" value="save_edit">Lưu chỉnh sửa</button>
                 <a href="/teacher-off" class="btn btn-info" style="margin-left:8px;">Thống kê ngày nghỉ GV</a>
@@ -85,26 +86,30 @@
             </div>
         {% endif %}
     </form>
-    <script>
-    function updateZoom(delta) {
-        let slider = document.getElementById('zoom_range');
-        let val = parseFloat(slider.value) + delta;
-        val = Math.max(0.3, Math.min(2, val));
-        slider.value = val.toFixed(2);
-        updateZoomValue(val);
-    }
-    function updateZoomValue(val) {
-        val = parseFloat(val);
-        document.getElementById('zoom_percent').innerText = Math.round(val * 100);
-        document.getElementById('zoom').value = val;
-        let zoomBox = document.querySelector('.zoom-box');
-        if (zoomBox) zoomBox.style.transform = `scale(${val})`;
-    }
-    window.onload = function(){
-        let slider = document.getElementById('zoom_range');
-        if (slider) updateZoomValue(slider.value);
-    }
-    </script>
 </div>
-</body>
-</html>
+<script>
+// Tự động submit khi chọn file
+document.addEventListener('DOMContentLoaded', function() {
+    var fileInput = document.getElementById('tkb_file_input');
+    if (fileInput) {
+        fileInput.addEventListener('change', function() {
+            if (fileInput.files.length > 0) {
+                fileInput.closest('form').submit();
+            }
+        });
+    }
+});
+
+// Zoom real-time
+function updateZoom(delta) {
+    let slider = document.getElementById('zoom_range');
+    let val = parseFloat(slider.value) + delta;
+    val = Math.max(0.3, Math.min(2, val));
+    slider.value = val.toFixed(2);
+    updateZoomValue(val);
+}
+function updateZoomValue(val) {
+    val = parseFloat(val);
+    document.getElementById('zoom_percent').innerText = Math.round(val * 100);
+    document.getElementById('zoom').value = val;
+    let zoomBox = document.query
