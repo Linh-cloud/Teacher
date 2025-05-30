@@ -118,6 +118,36 @@ body {
 .big-table th.header-tiet { width: 45px; min-width: 45px; }
 .big-table th.header-class { width: 120px; min-width: 120px; }
 .big-table th.header-mon, .big-table th.header-gv { width: 60px; min-width: 60px; }
+.zoom-slider-group {
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.zoom-range {
+    width: 120px;
+    accent-color: #888;
+    height: 4px;
+    margin: 0 4px;
+    vertical-align: middle;
+}
+.zoom-btn {
+    border: 1px solid #aaa;
+    background: #f7f7f7;
+    color: #333;
+    font-size: 20px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.18s, border 0.18s;
+}
+.zoom-btn:hover {
+    background: #e1e1e1;
+    border-color: #333;
+}
 @media (max-width: 900px) {
     .big-table { min-width: 900px; }
     .big-input { width: 70px; min-width: 60px; }
