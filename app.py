@@ -158,6 +158,7 @@ def index():
             num_classes = session.get('num_classes', 0)
     return render_template(
         'index.html',
+        headers=headers,
         tkb_data=tkb_data,
         class_labels=class_labels,
         duplicate_cells=duplicate_cells,
