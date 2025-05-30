@@ -18,7 +18,6 @@ body {
     width: max-content;
     table-layout: fixed;
     font-size: 15px;
-    min-width: unset;
     background: #fff;
 }
 .big-table th, .big-table td {
@@ -109,6 +108,16 @@ body {
     background: #f4f4f4;
     border-radius: 3px;
 }
+.big-table {
+    table-layout: fixed;
+    width: max-content;
+    min-width: 1200px;
+    background: #fff;
+}
+.big-table th.header-small { width: 60px; min-width: 60px; }
+.big-table th.header-tiet { width: 45px; min-width: 45px; }
+.big-table th.header-class { width: 120px; min-width: 120px; }
+.big-table th.header-mon, .big-table th.header-gv { width: 60px; min-width: 60px; }
 @media (max-width: 900px) {
     .big-table { min-width: 900px; }
     .big-input { width: 70px; min-width: 60px; }

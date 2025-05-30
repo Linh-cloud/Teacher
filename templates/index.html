@@ -55,16 +55,16 @@
                     <table class="big-table">
                         <thead>
                             <tr>
-                                <th rowspan="2">Thứ</th>
-                                <th rowspan="2">Tiết</th>
+                                <th rowspan="2" class="header-small">Thứ</th>
+                                <th rowspan="2" class="header-tiet">Tiết</th>
                                 {% for label in class_labels %}
-                                    <th colspan="2">{{ label }}</th>
+                                    <th colspan="2" class="header-class">{{ label }}</th>
                                 {% endfor %}
                             </tr>
                             <tr>
                                 {% for label in class_labels %}
-                                    <th>Môn</th>
-                                    <th>GV dạy</th>
+                                    <th class="header-mon">Môn</th>
+                                    <th class="header-gv">GV dạy</th>
                                 {% endfor %}
                             </tr>
                         </thead>
