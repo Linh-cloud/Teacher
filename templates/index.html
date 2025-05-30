@@ -112,4 +112,13 @@ function updateZoomValue(val) {
     val = parseFloat(val);
     document.getElementById('zoom_percent').innerText = Math.round(val * 100);
     document.getElementById('zoom').value = val;
-    let zoomBox = document.query
+    let zoomBox = document.querySelector('.zoom-box');
+    if (zoomBox) zoomBox.style.transform = `scale(${val})`;
+}
+window.onload = function(){
+    let slider = document.getElementById('zoom_range');
+    if (slider) updateZoomValue(slider.value);
+}
+</script>
+</body>
+</html>
