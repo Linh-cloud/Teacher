@@ -3,23 +3,43 @@ body {
     margin: 0;
     padding: 0;
 }
-.table-container {
+
+/* =========== Table & Scroll =========== */
+.table-container, .excel-scroll-x {
     overflow-x: auto;
+    overflow-y: auto;
     width: 100%;
-    max-width: 1800px;  /* Chỉnh lại theo nhu cầu */
+    max-width: 1800px;
+    max-height: 600px; /* Chỉnh lại nếu muốn */
     margin: 0 auto;
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 8px #eee;
     padding: 8px 0;
+    border-bottom: 1px solid #ccc;
 }
+.excel-scroll-x::-webkit-scrollbar {
+    height: 7px !important;
+}
+.excel-scroll-x::-webkit-scrollbar-thumb {
+    background: #b1b1b1;
+    border-radius: 3px;
+}
+.excel-scroll-x::-webkit-scrollbar-track {
+    background: #f4f4f4;
+    border-radius: 3px;
+}
+
+/* =========== Table =========== */
 .big-table {
     border-collapse: collapse;
-    width: max-content;
     table-layout: fixed;
+    width: max-content;
+    min-width: 1200px;   /* Đủ rộng để không bị bóp */
     font-size: 15px;
     background: #fff;
 }
+
 .big-table th, .big-table td {
     border: 1px solid #d0d7de;
     text-align: center;
@@ -30,22 +50,19 @@ body {
     text-overflow: ellipsis;
     box-sizing: border-box;
 }
+
 .big-table th {
     background: #f3f6fa;
     font-weight: bold;
 }
-.big-table .header-class {
-    width: 120px;
-}
-.big-table .header-small {
-    width: 65px;
-}
-.big-table .header-tiet {
-    width: 45px;
-}
-.big-table .header-mon, .big-table .header-gv {
-    width: 60px;
-}
+
+.big-table th.header-small         { width: 60px; min-width: 60px; }
+.big-table th.header-tiet          { width: 45px; min-width: 45px; }
+.big-table th.header-class         { width: 120px; min-width: 120px; }
+.big-table th.header-mon,
+.big-table th.header-gv            { width: 60px; min-width: 60px; }
+
+/* =========== Input =========== */
 .big-input {
     width: 98%;
     min-width: 40px;
@@ -58,7 +75,9 @@ body {
     text-align: center;
     font-size: inherit;
     font-weight: 500;
+    transition: background 0.08s, box-shadow 0.08s, border 0.08s;
 }
+
 .big-input:focus {
     outline: none;
     border: none;
@@ -66,7 +85,16 @@ body {
     box-shadow: none;
     font-weight: bold;
 }
-/* Highlight ô trùng sau lọc trùng */
+
+.big-table td:hover, .big-input:hover {
+    background: #f6f8fa;
+}
+.bg-danger .big-input {
+    background: #e94545 !important;
+    color: #fff !important;
+}
+
+/* =========== Highlight trùng =========== */
 .dup-cell {
     background: #fff862 !important;
     border: 2.5px solid #228B22 !important;
@@ -76,52 +104,21 @@ body {
     position: relative;
     z-index: 3;
 }
-.big-table td:hover, .big-input:hover {
-    background: #f6f8fa;
-}
-.bg-danger .big-input {
-    background: #e94545 !important;
-    color: #fff !important;
-}
+
+/* =========== Zoom Box =========== */
 .zoom-box {
     display: inline-block;
     transform-origin: top left;
 }
-.excel-scroll-x {
-    overflow-x: auto;
-    overflow-y: auto;
-    max-width: 1800px;
-    max-height: 600px;   /* Số này bạn chỉnh theo ý */
-    width: 100%;
-    margin: 0 auto;
-    border-bottom: 1px solid #ccc;
-    padding-bottom: 0;
-}
-.excel-scroll-x::-webkit-scrollbar {
-    height: 7px !important;       /* nhỏ bằng nửa mặc định Chrome */
-}
-.excel-scroll-x::-webkit-scrollbar-thumb {
-    background: #b1b1b1;
-    border-radius: 3px;
-}
-.excel-scroll-x::-webkit-scrollbar-track {
-    background: #f4f4f4;
-    border-radius: 3px;
-}
-.big-table {
-    table-layout: fixed;
-    width: max-content;
-    min-width: 1200px;
-    background: #fff;
-}
-.big-table th.header-small { width: 60px; min-width: 60px; }
-.big-table th.header-tiet { width: 45px; min-width: 45px; }
-.big-table th.header-class { width: 120px; min-width: 120px; }
-.big-table th.header-mon, .big-table th.header-gv { width: 60px; min-width: 60px; }
+
+/* =========== Zoom slider group =========== */
 .zoom-slider-group {
+    display: inline-flex;
+    align-items: center;
     gap: 8px;
     margin-bottom: 10px;
 }
+
 .zoom-range {
     width: 120px;
     accent-color: #888;
@@ -129,6 +126,7 @@ body {
     margin: 0 4px;
     vertical-align: middle;
 }
+
 .zoom-btn {
     border: 1px solid #aaa;
     background: #f7f7f7;
@@ -148,6 +146,8 @@ body {
     background: #e1e1e1;
     border-color: #333;
 }
+
+/* =========== Responsive =========== */
 @media (max-width: 900px) {
     .big-table { min-width: 900px; }
     .big-input { width: 70px; min-width: 60px; }
