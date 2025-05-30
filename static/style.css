@@ -1,37 +1,57 @@
 body {
     background: #f7f7f9;
+    margin: 0;
+    padding: 0;
+}
+.table-container {
+    overflow-x: auto;
+    width: 100%;
+    max-width: 1800px;  /* Chỉnh lại theo nhu cầu */
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px #eee;
+    padding: 8px 0;
 }
 .big-table {
     border-collapse: collapse;
-    background: #fff;
-    min-width: unset;
     width: max-content;
     table-layout: fixed;
-    font-size: 16px;
+    font-size: 15px;
+    min-width: unset;
+    background: #fff;
 }
 .big-table th, .big-table td {
     border: 1px solid #d0d7de;
     text-align: center;
     vertical-align: middle;
-    padding: 0;
+    padding: 2px 0;
     overflow: hidden;
     white-space: nowrap;
-    width: 110px;
-    max-width: 110px;
-    height: 40px;
+    text-overflow: ellipsis;
     box-sizing: border-box;
-    background: #fff;
 }
 .big-table th {
-    background: #eaecee;
+    background: #f3f6fa;
     font-weight: bold;
-    font-size: 16px;
+}
+.big-table .header-class {
+    width: 120px;
+}
+.big-table .header-small {
+    width: 65px;
+}
+.big-table .header-tiet {
+    width: 45px;
+}
+.big-table .header-mon, .big-table .header-gv {
+    width: 60px;
 }
 .big-input {
-    width: 100%;
-    min-width: 80px;
+    width: 98%;
+    min-width: 40px;
     max-width: 110px;
-    height: 38px;
+    height: 32px;
     background: transparent;
     border: none;
     outline: none;
@@ -39,7 +59,6 @@ body {
     text-align: center;
     font-size: inherit;
     font-weight: 500;
-    transition: background 0.08s, box-shadow 0.08s, border 0.08s;
 }
 .big-input:focus {
     outline: none;
