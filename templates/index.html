@@ -143,13 +143,17 @@
         let tbody = table?.tBodies[0];
         if (!tbody) return;
 
-        // Xác định cột GV dạy: giả sử là cột >=2 và lẻ (0: Thứ, 1: Tiết, 2: Môn, 3: GV, ...)
+        // Xác định cột GV dạy
         let gvIndices = [];
         let headerRows = table.tHead ? table.tHead.rows : table.querySelectorAll('thead tr');
         if (headerRows.length > 1) {
-            headerRows[1].querySelectorAll('th').forEach((cell, idx) => {
-                if (cell.textContent.trim().toLowerCase().includes('gv')) gvIndices.push(idx);
-            });
+            let colOffset = 2; // 0: Thứ, 1: Tiết
+            let n = headerRows[1].querySelectorAll('th').length;
+            for (let i = 0; i < n; i++) {
+                if (headerRows[1].querySelectorAll('th')[i].textContent.trim().toLowerCase().includes('gv')) {
+                    gvIndices.push(i + colOffset);
+                }
+            }
         }
 
         let results = [];
@@ -160,8 +164,8 @@
         });
 
         Array.from(tbody.rows).forEach((row, row_idx) => {
-            let thu = row.cells[0]?.innerText.trim();
-            let tiet = row.cells[1]?.innerText.trim();
+            let thu = row.cells[0]?.querySelector('input')?.value || row.cells[0]?.innerText.trim();
+            let tiet = row.cells[1]?.querySelector('input')?.value || row.cells[1]?.innerText.trim();
             let teachers = [];
             gvIndices.forEach(idx => {
                 let inp = row.cells[idx]?.querySelector('input');
