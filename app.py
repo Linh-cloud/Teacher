@@ -1,15 +1,19 @@
 from flask import Flask, render_template, request, session
 import pandas as pd
-import os
-import pickle
+import os, pickle, json
 from werkzeug.utils import secure_filename
-import json
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.secret_key = 'Ego'
-
 DEFAULT_CLASS_LABELS = ['9A', '9B', '9C', '8A', '8B', '8C', '7A', '7B', '7C', '6A', '6B', '6C', '6D']
+DEFAULT_CONSTRAINTS = {
+    'min_period': 2,
+    'max_period_teacher': 5,
+    'no_xe_le': False
+}
+
+# ========== XỬ LÝ FILE VÀ TKB ==========
 
 def process_tkb_file(filepath):
     df = pd.read_excel(filepath, sheet_name=0, header=None)
@@ -34,48 +38,6 @@ def process_tkb_file(filepath):
         headers.extend([f"{label} - Môn", f"{label} - GV"])
     return headers, tkb_data, num_classes, class_labels
 
-def check_duplicates(tkb_data, num_classes):
-    duplicate_cells = []
-    for row in tkb_data:
-        seen = {}
-        dups = []
-        for i in range(2, 2 + num_classes * 2, 2):
-            teacher = row[i + 1]
-            if teacher and teacher in seen:
-                dups.append(i + 1)
-                dups.append(seen[teacher])
-            else:
-                seen[teacher] = i + 1
-        duplicate_cells.append(list(set(dups)))
-    return duplicate_cells
-
-def check_min_periods_per_day(tkb_data, class_labels, min_periods=2, tiet_col=1):
-    violations = []
-    for class_idx, label in enumerate(class_labels):
-        day_tiet = {}  # Thứ -> list tiết
-        for row in tkb_data:
-            thu = row[0]
-            tiet = row[tiet_col]
-            try:
-                tiet_num = int(tiet)
-            except Exception:
-                continue
-            mon = row[2 + class_idx*2]
-            if mon.strip():
-                day_tiet.setdefault(thu, []).append(tiet_num)
-        # Kiểm tra mỗi ngày
-        for thu, tiet_list in day_tiet.items():
-            if 0 < len(tiet_list) < min_periods:
-                violations.append({
-                    "Lớp": label,
-                    "Thứ": thu,
-                    "Số tiết": len(tiet_list),
-                    "Yêu cầu tối thiểu": min_periods,
-                    "Các tiết": sorted(tiet_list)
-                })
-    return violations
-
-# Hàm kiểm tra trùng giáo viên, trả về danh sách vi phạm và cell bị trùng
 def check_gv_trung_tiet_v2(tkb_data, headers, class_labels):
     vi_pham = []
     dup_cells = set()
@@ -102,7 +64,6 @@ def check_gv_trung_tiet_v2(tkb_data, headers, class_labels):
                 })
     return vi_pham, dup_cells
 
-# Thống kê ngày nghỉ giáo viên
 def generate_teacher_day_schedule(tkb_data):
     teacher_day_schedule = {}
     for row_data in tkb_data:
@@ -132,37 +93,29 @@ def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
         teacher_off_schedule[teacher] = days_off
     return teacher_off_schedule, list(teacher_day_schedule.keys())
 
-@app.route('/teacher-off')
-def teacher_off():
-    tkb_data = pickle.loads(session.get('tkb_data', pickle.dumps([])))
-    teacher_off_schedule, weekdays = get_teacher_off_schedule(tkb_data)
-    return render_template(
-        'teacher_off.html',
-        teacher_off_schedule=teacher_off_schedule,
-        weekdays=weekdays
-    )
+# ========== ROUTES ==========
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
+@app.route('/')
+@app.route('/tkb', methods=['GET', 'POST'])
+def tkb():
     headers = []
     tkb_data = []
     duplicate_cells = None
     num_classes = 0
     zoom = 1.0
+    # Lấy ràng buộc hiện tại từ session hoặc mặc định
     class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
     vi_pham = []
     dup_cells = set()
+    rang_buoc = session.get('rang_buoc', DEFAULT_CONSTRAINTS.copy())
 
     if request.method == 'POST':
         zoom = request.form.get('zoom_manual') or request.form.get('zoom')
-        try:
-            zoom = float(zoom)
-        except:
-            zoom = 1.0
+        try: zoom = float(zoom)
+        except: zoom = 1.0
         zoom = max(0.3, min(zoom, 2))
         file = request.files.get('tkb_file')
         action = request.form.get('action')
-
         if file and file.filename.endswith('.xlsx'):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -178,7 +131,6 @@ def index():
             tkb_data = pickle.loads(session.get('tkb_data', pickle.dumps([])))
             num_classes = session.get('num_classes', 0)
             class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
-
             if action == 'save_edit':
                 new_data = []
                 for row_idx, row in enumerate(tkb_data):
@@ -190,15 +142,9 @@ def index():
                     new_data.append(new_row)
                 tkb_data = new_data
                 session['tkb_data'] = pickle.dumps(tkb_data)
-
-        # Kiểm tra trùng giáo viên
+        # Kiểm tra trùng giáo viên luôn khi thao tác
         vi_pham, dup_cells = check_gv_trung_tiet_v2(tkb_data, headers, class_labels)
-        # Kiểm tra trùng ô GV (nếu muốn)
-        if action == 'check_duplicates':
-            duplicate_cells = check_duplicates(tkb_data, num_classes)
-
         session['zoom'] = zoom
-
     else:
         zoom = session.get('zoom', 1)
         if 'headers' in session and 'tkb_data' in session:
@@ -206,22 +152,58 @@ def index():
             tkb_data = pickle.loads(session['tkb_data'])
             num_classes = session.get('num_classes', 0)
             class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
-        # Kiểm tra trùng giáo viên mỗi lần GET nếu đã có dữ liệu
         if headers and tkb_data:
             vi_pham, dup_cells = check_gv_trung_tiet_v2(tkb_data, headers, class_labels)
-
     return render_template(
-        'index.html',
+        'tkb.html',
         headers=headers,
         tkb_data=tkb_data,
         class_labels=class_labels,
         vi_pham=vi_pham,
         dup_cells=dup_cells,
-        duplicate_cells=duplicate_cells,
+        rang_buoc=rang_buoc,
         zip=zip,
         enumerate=enumerate,
-        zoom=zoom
+        zoom=zoom,
+        tab='tkb'
     )
+
+@app.route('/khai-bao')
+def khai_bao():
+    return render_template('khai_bao.html', tab='khai_bao')
+
+@app.route('/rang-buoc', methods=['GET', 'POST'])
+def rang_buoc():
+    # Lấy hoặc gán mặc định các ràng buộc
+    current = session.get('rang_buoc', DEFAULT_CONSTRAINTS.copy())
+    saved = False
+    if request.method == 'POST':
+        # Lưu lại các ràng buộc mới (từ form)
+        min_period = int(request.form.get('min_period', 2))
+        max_period_teacher = int(request.form.get('max_period_teacher', 5))
+        no_xe_le = bool(request.form.get('no_xe_le'))  # Checkbox -> 'on' nếu có, else None
+        # Đảm bảo đúng kiểu dữ liệu
+        session['rang_buoc'] = {
+            'min_period': min_period,
+            'max_period_teacher': max_period_teacher,
+            'no_xe_le': no_xe_le
+        }
+        current = session['rang_buoc']
+        saved = True
+    return render_template(
+        'rang_buoc.html',
+        min_period=current['min_period'],
+        max_period_teacher=current['max_period_teacher'],
+        no_xe_le=current['no_xe_le'],
+        saved=saved,
+        tab='rang_buoc'
+    )
+
+@app.route('/teacher-off')
+def teacher_off():
+    tkb_data = pickle.loads(session.get('tkb_data', pickle.dumps([])))
+    teacher_off_schedule, weekdays = get_teacher_off_schedule(tkb_data)
+    return render_template('teacher_off.html', teacher_off_schedule=teacher_off_schedule, weekdays=weekdays, tab='tkb')
 
 if __name__ == '__main__':
     app.run(debug=True)

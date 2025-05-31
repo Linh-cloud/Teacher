@@ -1,64 +1,7 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Thống kê ngày nghỉ giáo viên</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-        .excel-table {
-            border-collapse: collapse;
-            background: #fff;
-            margin: 30px auto 10px auto;
-            font-size: 15px;
-            min-width: 420px;
-            max-width: 900px;
-            box-shadow: 0 2px 12px #e5e5e5;
-        }
-        .excel-table th, .excel-table td {
-            border: 1px solid #d0d7de;
-            text-align: center;
-            vertical-align: middle;
-            padding: 8px 10px;
-            white-space: pre-line;
-            background: #fff;
-        }
-        .excel-table th {
-            background: #f3f6fa;
-            font-weight: bold;
-            font-size: 16px;
-        }
-        .excel-table tr:nth-child(even) td {
-            background: #f9fbfd;
-        }
-        .excel-table td.days-off {
-            text-align: left;
-        }
-        .btn-back {
-            display: inline-block;
-            margin: 20px auto 0 auto;
-            background: #f1f3f8;
-            color: #34495e;
-            padding: 7px 18px;
-            border-radius: 6px;
-            border: 1px solid #bfcad6;
-            text-decoration: none;
-            transition: all 0.18s;
-        }
-        .btn-back:hover {
-            background: #c3e6f8;
-            color: #1d3557;
-        }
-        h3 {
-            text-align: center;
-            margin-bottom: 18px;
-            font-weight: bold;
-        }
-        @media (max-width:600px) {
-            .excel-table { min-width: unset; width: 98vw; font-size: 13px;}
-        }
-    </style>
-</head>
-<body style="background:#f7f7f9;">
+{% extends 'base.html' %}
+{% block title %}Thống kê ngày nghỉ giáo viên{% endblock %}
+
+{% block content %}
 <div style="max-width:940px; margin:24px auto; background:#fff; padding:26px 12px 10px 12px; border-radius:10px; box-shadow:0 2px 16px #eaeaea;">
     <h3>Thống kê ngày nghỉ của giáo viên</h3>
     <table class="excel-table">
@@ -84,8 +27,7 @@
         </tbody>
     </table>
     <div style="text-align:center;">
-        <a href="/" class="btn-back">Quay lại</a>
+        <a href="{{ url_for('tkb') }}" class="btn-back">Quay lại</a>
     </div>
 </div>
-</body>
-</html>
+{% endblock %}
