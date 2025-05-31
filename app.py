@@ -174,27 +174,38 @@ def khai_bao():
 
 @app.route('/rang-buoc', methods=['GET', 'POST'])
 def rang_buoc():
-    # Lấy hoặc gán mặc định các ràng buộc
-    current = session.get('rang_buoc', DEFAULT_CONSTRAINTS.copy())
-    saved = False
+    list_to_chuyen_mon = ['Toán', 'Anh', 'Văn']  # Có thể load từ DB
+    list_buoi = ['Thứ 2 - Sáng', 'Thứ 2 - Chiều', 'Thứ 3 - Sáng', ...]
+    list_tiet = ['Tiết 1', 'Tiết 2', 'Tiết 3', ...]
+    current = session.get('rang_buoc', {})
     if request.method == 'POST':
-        # Lưu lại các ràng buộc mới (từ form)
-        min_period = int(request.form.get('min_period', 2))
-        max_period_teacher = int(request.form.get('max_period_teacher', 5))
-        no_xe_le = bool(request.form.get('no_xe_le'))  # Checkbox -> 'on' nếu có, else None
-        # Đảm bảo đúng kiểu dữ liệu
-        session['rang_buoc'] = {
-            'min_period': min_period,
-            'max_period_teacher': max_period_teacher,
-            'no_xe_le': no_xe_le
-        }
-        current = session['rang_buoc']
+        # Xử lý riêng cho ràng buộc 3 (và các ràng buộc khác)
+        rb = {}
+        if request.form.get('rb_tiet_hop_to'):
+            # Duyệt lấy các dòng đang có
+            list_items = []
+            count = int(request.form.get('tiet_hop_to_count', 0))
+            for i in range(count):
+                if request.form.get(f'del_{i}'): continue  # Bỏ dòng đã chọn xóa
+                row = {
+                    'to_chuyen_mon': request.form.get(f'to_chuyen_mon_{i}'),
+                    'buoi': request.form.get(f'buoi_hoc_{i}'),
+                    'tiet': request.form.get(f'tiet_{i}'),
+                }
+                list_items.append(row)
+            rb['enabled'] = True
+            rb['list'] = list_items
+        current['tiet_hop_to'] = rb
+        session['rang_buoc'] = current
         saved = True
+    else:
+        saved = False
     return render_template(
         'rang_buoc.html',
-        min_period=current['min_period'],
-        max_period_teacher=current['max_period_teacher'],
-        no_xe_le=current['no_xe_le'],
+        rang_buoc=current,
+        list_to_chuyen_mon=list_to_chuyen_mon,
+        list_buoi=list_buoi,
+        list_tiet=list_tiet,
         saved=saved,
         tab='rang_buoc'
     )

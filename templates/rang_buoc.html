@@ -3,53 +3,25 @@
 
 {% block content %}
 <h2 class="mb-4" style="text-align:center;">Cài đặt & Chỉnh sửa Ràng buộc TKB</h2>
-<form method="POST" id="constraintForm" class="mx-auto" style="max-width:600px;">
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white fw-bold">
-            Danh sách các ràng buộc chính
-        </div>
-        <div class="card-body">
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">
-                    <input type="checkbox" name="enable_min_periods" {% if config.enable_min_periods %}checked{% endif %}>
-                    Số tiết tối thiểu mỗi ngày/lớp
-                </label>
-                <input type="number" name="min_periods" min="1" max="10" class="form-control d-inline-block w-auto ms-2"
-                       value="{{ config.min_periods or 2 }}" style="width: 70px;">
-            </div>
-            
-            <div class="mb-3">
-                <label class="form-label fw-semibold">
-                    <input type="checkbox" name="enable_max_periods_teacher" {% if config.enable_max_periods_teacher %}checked{% endif %}>
-                    Số tiết tối đa/ngày/giáo viên
-                </label>
-                <input type="number" name="max_periods_teacher" min="1" max="10" class="form-control d-inline-block w-auto ms-2"
-                       value="{{ config.max_periods_teacher or 4 }}" style="width: 70px;">
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">
-                    <input type="checkbox" name="enable_no_gv_duplicate" {% if config.enable_no_gv_duplicate %}checked{% endif %}>
-                    Không trùng giáo viên cùng tiết
-                </label>
-            </div>
-
-            <div class="mb-3">
-                <label class="form-label fw-semibold">
-                    <input type="checkbox" name="enable_no_xe_le" {% if config.enable_no_xe_le %}checked{% endif %}>
-                    Các tiết của lớp trong 1 ngày phải liên tiếp (không xé lẻ)
-                </label>
-            </div>
-
-            <!-- Thêm các ràng buộc khác nếu có -->
-        </div>
-        <div class="card-footer text-end">
-            <button type="submit" class="btn btn-primary">Lưu cấu hình</button>
-        </div>
+<form method="POST">
+    <div class="mb-3">
+        <label>Số tiết tối thiểu mỗi ngày/lớp:</label>
+        <input type="number" name="min_period" value="{{ min_period }}" min="1" max="10" required>
     </div>
+    <div class="mb-3">
+        <label>Số tiết tối đa/ngày/giáo viên:</label>
+        <input type="number" name="max_period_teacher" value="{{ max_period_teacher }}" min="1" max="10" required>
+    </div>
+    <div class="mb-3 form-check">
+        <input type="checkbox" name="no_xe_le" class="form-check-input" id="no_xe_le"
+            {% if no_xe_le %}checked{% endif %}>
+        <label class="form-check-label" for="no_xe_le">Không cho phép xé lẻ tiết trong ngày</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Lưu ràng buộc</button>
+    {% if saved %}
+      <span style="color:green;font-weight:500;margin-left:10px;">Đã lưu!</span>
+    {% endif %}
 </form>
-
 {% if saved %}
     <div class="alert alert-success mt-2 text-center">Đã lưu cấu hình ràng buộc thành công!</div>
 {% endif %}
