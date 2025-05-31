@@ -188,6 +188,40 @@
         }
     });
 
+    function checkDuplicateTeacherCells() {
+        // Bỏ highlight cũ
+        document.querySelectorAll('.big-input').forEach(inp => {
+            inp.classList.remove('dup-cell');
+            inp.parentElement.classList.remove('dup-cell');
+        });
+        // Duyệt từng dòng (từng tiết)
+        document.querySelectorAll('.big-table tbody tr').forEach((tr, row_idx) => {
+            let teacherCells = []; // Array of {gv, cell/input, col_idx}
+            tr.querySelectorAll('input[type="text"]').forEach((input, col_idx) => {
+                // Chỉ kiểm tra các cột GV: giả sử ở vị trí lẻ (cột 3,5,7,...), thay đổi nếu cấu trúc khác
+                // Nếu headers truyền xuống JS thì kiểm tra bằng header, ở đây demo: col_idx >=2 && col_idx % 2 == 1
+                if (col_idx >=2 && col_idx % 2 == 1) {
+                    let gv = input.value.trim().toLowerCase();
+                    if (gv) teacherCells.push({gv, cell: input, col_idx});
+                }
+            });
+            // Đếm trùng
+            let seen = {};
+            teacherCells.forEach(obj => {
+                if (!seen[obj.gv]) seen[obj.gv] = [];
+                seen[obj.gv].push(obj.cell);
+            });
+            Object.values(seen).forEach(cellArr => {
+                if (cellArr.length > 1) {
+                    cellArr.forEach(cell => {
+                        cell.classList.add('dup-cell');
+                        if (cell.parentElement) cell.parentElement.classList.add('dup-cell');
+                    });
+                }
+            });
+        });
+    }
+
     // Undo - Trước đó
     function undoChange() {
         if (undoStack.length > 1) {
