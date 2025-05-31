@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body style="margin:0; padding:0; background: #f7f7f9;">
+<!-- Mẫu ví dụ -->
 <button type="button" class="btn btn-info" onclick="document.getElementById('mau_tkb_img').style.display='block';">
     👁 Xem mẫu ví dụ đầu vào
 </button>
@@ -40,72 +41,47 @@
                 <span id="autosave-status" style="margin-left:12px;color:#28a745;font-weight:500;"></span>
             </div>
         </div>
+
         {% if headers %}
-            <h5 style="text-align:center;">Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
-            <div class="excel-scroll-x"
-                style="overflow-x: auto; overflow-y: auto; width: 100%; max-width: 1800px; max-height: 600px; margin: 0 auto; padding-bottom: 0; background: #fff;">
-                <div class="zoom-box" style="transform: scale({{ zoom|default(1) }}); transform-origin: top left; width: max-content;">
-                    <!-- Bảng báo lỗi trùng giáo viên -->
-                    <table class="table table-bordered mb-3">
-                        <thead>
-                            <tr>
-                                <th>Giáo viên</th>
-                                <th>Thứ</th>
-                                <th>Tiết</th>
-                                <th>Số lần trùng</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in vi_pham %}
-                            <tr class="table-danger">
-                                <td>{{ row['Giáo viên'] }}</td>
-                                <td>{{ row['Thứ'] }}</td>
-                                <td>{{ row['Tiết'] }}</td>
-                                <td>{{ row['Số lần trùng'] }}</td>
-                            </tr>
+        <h5 style="text-align:center;">Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
+        <div class="excel-scroll-x"
+            style="overflow-x: auto; overflow-y: auto; width: 100%; max-width: 1800px; max-height: 600px; margin: 0 auto; padding-bottom: 0; background: #fff;">
+            <div class="zoom-box" style="transform: scale({{ zoom|default(1) }}); transform-origin: top left; width: max-content;">
+                
+                <!-- Bảng báo lỗi trùng giáo viên (render client, luôn tự động cập nhật) -->
+                <div id="duplicateTableContainer"></div>
+                
+                <!-- Bảng thời khóa biểu -->
+                <table class="big-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="header-small">Thứ</th>
+                            <th rowspan="2" class="header-tiet">Tiết</th>
+                            {% for label in class_labels %}
+                                <th colspan="2" class="header-class">{{ label }}</th>
                             {% endfor %}
-                        </tbody>
-                    </table>
-                    {% if not vi_pham %}
-                    <div class="alert alert-success mb-3">Không có giáo viên nào bị trùng tiết!</div>
-                    {% endif %}
-                    <!-- Bảng thời khóa biểu -->
-                    <table class="big-table">
-                        <thead>
-                            <tr>
-                                <th rowspan="2" class="header-small">Thứ</th>
-                                <th rowspan="2" class="header-tiet">Tiết</th>
-                                {% for label in class_labels %}
-                                    <th colspan="2" class="header-class">{{ label }}</th>
-                                {% endfor %}
-                            </tr>
-                            <tr>
-                                {% for label in class_labels %}
-                                    <th class="header-mon">Môn</th>
-                                    <th class="header-gv">GV dạy</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for row_idx, row in enumerate(tkb_data) %}
-                            <tr>
-                            {% for col_idx, cell in enumerate(row) %}
-                                {% if dup_cells and (row_idx, col_idx) in dup_cells %}
-                                    <td class="dup-cell">
-                                        <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input dup-cell">
-                                    </td>
-                                {% else %}
-                                    <td>
-                                        <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input">
-                                    </td>
-                                {% endif %}
+                        </tr>
+                        <tr>
+                            {% for label in class_labels %}
+                                <th class="header-mon">Môn</th>
+                                <th class="header-gv">GV dạy</th>
                             {% endfor %}
-                            </tr>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row_idx, row in enumerate(tkb_data) %}
+                        <tr>
+                        {% for col_idx, cell in enumerate(row) %}
+                            <td>
+                                <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input">
+                            </td>
                         {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
+        </div>
         {% endif %}
     </form>
 </div>
@@ -141,6 +117,7 @@
     window.onload = function(){
         let slider = document.getElementById('zoom_range');
         if (slider) updateZoomValue(slider.value);
+        renderDuplicateTable();
     };
 
     // Undo/Redo stack + autosave (bán lưu)
@@ -160,38 +137,77 @@
         return data;
     }
 
-    function checkDuplicateTeacherCells() {
-        // Bỏ highlight cũ
-        document.querySelectorAll('.big-input').forEach(inp => {
-            inp.classList.remove('dup-cell');
-            inp.parentElement.classList.remove('dup-cell');
-        });
-        // Duyệt từng dòng (từng tiết)
-        document.querySelectorAll('.big-table tbody tr').forEach((tr, row_idx) => {
-            let teacherCells = []; // Array of {gv, cell/input, col_idx}
-            tr.querySelectorAll('input[type="text"]').forEach((input, col_idx) => {
-                // Chỉ kiểm tra các cột GV: giả sử ở vị trí lẻ (cột 3,5,7,...), thay đổi nếu cấu trúc khác
-                // Nếu headers truyền xuống JS thì kiểm tra bằng header, ở đây demo: col_idx >=2 && col_idx % 2 == 1
-                if (col_idx >=2 && col_idx % 2 == 1) {
-                    let gv = input.value.trim().toLowerCase();
-                    if (gv) teacherCells.push({gv, cell: input, col_idx});
-                }
+    // Kiểm tra và highlight ô trùng giáo viên + render bảng trùng
+    function renderDuplicateTable() {
+        let table = document.querySelector('.big-table');
+        let tbody = table?.tBodies[0];
+        if (!tbody) return;
+
+        // Xác định cột GV dạy: giả sử là cột >=2 và lẻ (0: Thứ, 1: Tiết, 2: Môn, 3: GV, ...)
+        let gvIndices = [];
+        let headerRows = table.tHead ? table.tHead.rows : table.querySelectorAll('thead tr');
+        if (headerRows.length > 1) {
+            headerRows[1].querySelectorAll('th').forEach((cell, idx) => {
+                if (cell.textContent.trim().toLowerCase().includes('gv')) gvIndices.push(idx);
             });
-            // Đếm trùng
+        }
+
+        let results = [];
+        // Xóa hết highlight cũ
+        tbody.querySelectorAll('input').forEach(inp => {
+            inp.classList.remove('dup-cell');
+            if (inp.parentElement) inp.parentElement.classList.remove('dup-cell');
+        });
+
+        Array.from(tbody.rows).forEach((row, row_idx) => {
+            let thu = row.cells[0]?.innerText.trim();
+            let tiet = row.cells[1]?.innerText.trim();
+            let teachers = [];
+            gvIndices.forEach(idx => {
+                let inp = row.cells[idx]?.querySelector('input');
+                let gv = inp ? inp.value.trim() : "";
+                if (gv) teachers.push({gv, cell: inp});
+            });
             let seen = {};
-            teacherCells.forEach(obj => {
+            teachers.forEach(obj => {
                 if (!seen[obj.gv]) seen[obj.gv] = [];
                 seen[obj.gv].push(obj.cell);
             });
-            Object.values(seen).forEach(cellArr => {
-                if (cellArr.length > 1) {
-                    cellArr.forEach(cell => {
+            Object.entries(seen).forEach(([gv, arr]) => {
+                if (arr.length > 1) {
+                    arr.forEach(cell => {
                         cell.classList.add('dup-cell');
                         if (cell.parentElement) cell.parentElement.classList.add('dup-cell');
+                    });
+                    results.push({
+                        gv, thu, tiet, so_lan_trung: arr.length
                     });
                 }
             });
         });
+        // Render bảng vi phạm
+        let html = "";
+        if (results.length) {
+            html += `<table class="table table-bordered mb-3"><thead class="table-danger">
+                <tr>
+                    <th>Giáo viên</th>
+                    <th>Thứ</th>
+                    <th>Tiết</th>
+                    <th>Số lần trùng</th>
+                </tr></thead><tbody>`;
+            results.forEach(row => {
+                html += `<tr class="table-danger">
+                    <td>${row.gv}</td>
+                    <td>${row.thu}</td>
+                    <td>${row.tiet}</td>
+                    <td>${row.so_lan_trung}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+        } else {
+            html = `<div class="alert alert-success mb-3">Không có giáo viên nào bị trùng tiết!</div>`;
+        }
+        document.getElementById('duplicateTableContainer').innerHTML = html;
     }
 
     function saveState() {
@@ -201,7 +217,7 @@
         redoStack = [];
         localStorage.setItem("tkb_autosave", JSON.stringify(data));
         if (autosaveStatus) autosaveStatus.innerText = "Đã lưu tạm";
-        checkDuplicateTeacherCells(); // Gọi kiểm tra sau mỗi autosave
+        renderDuplicateTable();
     }    
 
     // Auto-save khi chỉnh sửa ô bất kỳ
@@ -218,9 +234,10 @@
                         if (arr[i] && arr[i][j]) input.value = arr[i][j];
                     });
                 });
-                autosaveStatus.innerText = "Đã khôi phục dữ liệu tạm!";
+                if (autosaveStatus) autosaveStatus.innerText = "Đã khôi phục dữ liệu tạm!";
+                renderDuplicateTable();
             }
-        }    
+        }
     });    
 
     // Undo - Trước đó
@@ -235,8 +252,8 @@
                 });
             });
             if (autosaveStatus) autosaveStatus.innerText = "Hoàn tác thành công";
+            renderDuplicateTable();
         }
-        checkDuplicateTeacherCells();
     }
     // Redo - Sau đó
     function redoChange() {
@@ -249,8 +266,8 @@
                 });
             });
             if (autosaveStatus) autosaveStatus.innerText = "Đã redo";
+            renderDuplicateTable();
         }
-        checkDuplicateTeacherCells();
     }
 </script>
 </body>
