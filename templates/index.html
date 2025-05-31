@@ -21,7 +21,6 @@
     <form id="tkbForm" method="POST" enctype="multipart/form-data" class="mb-3" style="text-align: center;">
         <div class="row mb-2 align-items-center" style="justify-content:center;">
             <div class="col" style="display:inline-block;min-width:300px;">
-                <!-- Đổi id cho input file -->
                 <input class="form-control" type="file" name="tkb_file" accept=".xlsx" id="tkb_file_input">
             </div>
             <div class="zoom-slider-group" style="display:inline-flex; align-items:center; gap:8px; margin-bottom:12px;">
@@ -34,10 +33,11 @@
                 <input type="hidden" id="zoom" name="zoom" value="{{ zoom|default(1) }}">
             </div>
             <div class="col-auto" style="display:inline-block;">
-                <!-- Ẩn nút "Hiển thị bảng" vì không cần -->
-                <button class="btn btn-warning" type="submit" name="action" value="check_duplicates">Kiểm tra trùng giáo viên</button>
+                <button type="button" class="btn btn-secondary" onclick="undoChange()">Trước đó</button>
+                <button type="button" class="btn btn-secondary" onclick="redoChange()">Sau đó</button>
                 <button class="btn btn-success" type="submit" name="action" value="save_edit">Lưu chỉnh sửa</button>
                 <a href="/teacher-off" class="btn btn-info" style="margin-left:8px;">Thống kê ngày nghỉ GV</a>
+                <span id="autosave-status" style="margin-left:12px;color:#28a745;font-weight:500;"></span>
             </div>
         </div>
         {% if headers %}
@@ -45,8 +45,8 @@
             <div class="excel-scroll-x"
                 style="overflow-x: auto; overflow-y: auto; width: 100%; max-width: 1800px; max-height: 600px; margin: 0 auto; padding-bottom: 0; background: #fff;">
                 <div class="zoom-box" style="transform: scale({{ zoom|default(1) }}); transform-origin: top left; width: max-content;">
-                    <!-- table kiểm tra trùng giáo viên -->
-                    <table class="table table-bordered">
+                    <!-- Bảng báo lỗi trùng giáo viên -->
+                    <table class="table table-bordered mb-3">
                         <thead>
                             <tr>
                                 <th>Giáo viên</th>
@@ -67,8 +67,9 @@
                         </tbody>
                     </table>
                     {% if not vi_pham %}
-                    <div class="alert alert-success">Không có giáo viên nào bị trùng tiết!</div>
+                    <div class="alert alert-success mb-3">Không có giáo viên nào bị trùng tiết!</div>
                     {% endif %}
+                    <!-- Bảng thời khóa biểu -->
                     <table class="big-table">
                         <thead>
                             <tr>
@@ -108,38 +109,112 @@
         {% endif %}
     </form>
 </div>
-<script>
-// Tự động submit khi chọn file
-document.addEventListener('DOMContentLoaded', function() {
-    var fileInput = document.getElementById('tkb_file_input');
-    if (fileInput) {
-        fileInput.addEventListener('change', function() {
-            if (fileInput.files.length > 0) {
-                fileInput.closest('form').submit();
-            }
-        });
-    }
-});
 
-// Zoom real-time
-function updateZoom(delta) {
-    let slider = document.getElementById('zoom_range');
-    let val = parseFloat(slider.value) + delta;
-    val = Math.max(0.3, Math.min(2, val));
-    slider.value = val.toFixed(2);
-    updateZoomValue(val);
-}
-function updateZoomValue(val) {
-    val = parseFloat(val);
-    document.getElementById('zoom_percent').innerText = Math.round(val * 100);
-    document.getElementById('zoom').value = val;
-    let zoomBox = document.querySelector('.zoom-box');
-    if (zoomBox) zoomBox.style.transform = `scale(${val})`;
-}
-window.onload = function(){
-    let slider = document.getElementById('zoom_range');
-    if (slider) updateZoomValue(slider.value);
-}
+<script>
+    // Tự động submit khi chọn file mới
+    document.addEventListener('DOMContentLoaded', function() {
+        var fileInput = document.getElementById('tkb_file_input');
+        if (fileInput) {
+            fileInput.addEventListener('change', function() {
+                if (fileInput.files.length > 0) {
+                    fileInput.closest('form').submit();
+                }
+            });
+        }
+    });
+
+    // Zoom real-time
+    function updateZoom(delta) {
+        let slider = document.getElementById('zoom_range');
+        let val = parseFloat(slider.value) + delta;
+        val = Math.max(0.3, Math.min(2, val));
+        slider.value = val.toFixed(2);
+        updateZoomValue(val);
+    }
+    function updateZoomValue(val) {
+        val = parseFloat(val);
+        document.getElementById('zoom_percent').innerText = Math.round(val * 100);
+        document.getElementById('zoom').value = val;
+        let zoomBox = document.querySelector('.zoom-box');
+        if (zoomBox) zoomBox.style.transform = `scale(${val})`;
+    }
+    window.onload = function(){
+        let slider = document.getElementById('zoom_range');
+        if (slider) updateZoomValue(slider.value);
+    };
+
+    // Undo/Redo stack + autosave (bán lưu)
+    let undoStack = [];
+    let redoStack = [];
+    let autosaveStatus = document.getElementById("autosave-status");
+
+    function getCurrentData() {
+        let data = [];
+        document.querySelectorAll('.big-table tbody tr').forEach(tr => {
+            let row = [];
+            tr.querySelectorAll('input[type="text"]').forEach(input => {
+                row.push(input.value);
+            });
+            data.push(row);
+        });
+        return data;
+    }
+
+    function saveState() {
+        let data = getCurrentData();
+        undoStack.push(JSON.stringify(data));
+        if (undoStack.length > 50) undoStack.shift();
+        redoStack = [];
+        localStorage.setItem("tkb_autosave", JSON.stringify(data));
+        if (autosaveStatus) autosaveStatus.innerText = "Đã lưu tạm";
+    }
+
+    // Auto-save khi chỉnh sửa ô bất kỳ
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.big-table input[type="text"]').forEach(input => {
+            input.addEventListener('input', saveState);
+        });
+        let autosave = localStorage.getItem("tkb_autosave");
+        if (autosave) {
+            if (confirm("Bạn có muốn khôi phục dữ liệu chưa lưu không?")) {
+                let arr = JSON.parse(autosave);
+                document.querySelectorAll('.big-table tbody tr').forEach((tr, i) => {
+                    tr.querySelectorAll('input[type="text"]').forEach((input, j) => {
+                        if (arr[i] && arr[i][j]) input.value = arr[i][j];
+                    });
+                });
+                autosaveStatus.innerText = "Đã khôi phục dữ liệu tạm!";
+            }
+        }
+    });
+
+    // Undo - Trước đó
+    function undoChange() {
+        if (undoStack.length > 1) {
+            let current = undoStack.pop();
+            redoStack.push(current);
+            let prev = JSON.parse(undoStack[undoStack.length - 1]);
+            document.querySelectorAll('.big-table tbody tr').forEach((tr, i) => {
+                tr.querySelectorAll('input[type="text"]').forEach((input, j) => {
+                    input.value = prev[i][j];
+                });
+            });
+            if (autosaveStatus) autosaveStatus.innerText = "Hoàn tác thành công";
+        }
+    }
+    // Redo - Sau đó
+    function redoChange() {
+        if (redoStack.length > 0) {
+            let next = JSON.parse(redoStack.pop());
+            undoStack.push(JSON.stringify(next));
+            document.querySelectorAll('.big-table tbody tr').forEach((tr, i) => {
+                tr.querySelectorAll('input[type="text"]').forEach((input, j) => {
+                    input.value = next[i][j];
+                });
+            });
+            if (autosaveStatus) autosaveStatus.innerText = "Đã redo";
+        }
+    }
 </script>
 </body>
 </html>
