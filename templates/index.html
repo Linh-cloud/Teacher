@@ -55,6 +55,8 @@
                 <!-- Bảng báo lỗi trùng giáo viên (render client, luôn tự động cập nhật) -->
                 <div id="duplicateTableContainer"></div>
                 <div id="minPeriodDayContainer"></div>
+                <div id="consecutivePeriodsContainer"></div>
+                <!-- Bạn có thể thêm dòng trên để check liên tiếp nếu muốn -->
 
                 <!-- Bảng thời khóa biểu -->
                 <table class="big-table">
@@ -119,13 +121,6 @@
         let zoomBox = document.querySelector('.zoom-box');
         if (zoomBox) zoomBox.style.transform = `scale(${val})`;
     }
-    window.onload = function(){
-        let slider = document.getElementById('zoom_range');
-        if (slider) updateZoomValue(slider.value);
-        renderDuplicateTable();
-        let minPeriods = parseInt(document.getElementById('min_period_input').value) || 2;
-        renderMinPeriodPerDayTable(minPeriods);
-    };
 
     // Undo/Redo stack + autosave (bán lưu)
     let undoStack = [];
@@ -154,7 +149,7 @@
         let gvIndices = [];
         let headerRows = table.tHead ? table.tHead.rows : table.querySelectorAll('thead tr');
         if (headerRows.length > 1) {
-            let colOffset = 2; // 0: Thứ, 1: Tiết
+            let colOffset = 2;
             let n = headerRows[1].querySelectorAll('th').length;
             for (let i = 0; i < n; i++) {
                 if (headerRows[1].querySelectorAll('th')[i].textContent.trim().toLowerCase().includes('gv')) {
@@ -221,10 +216,8 @@
         document.getElementById('duplicateTableContainer').innerHTML = html;
     }
 
-    // --- KIỂM TRA SỐ TIẾT TỐI THIỂU MỖI NGÀY CHO TỪNG LỚP ---
-
+    // Kiểm tra số tiết tối thiểu mỗi ngày/lớp, kể cả chỉ có 1 tiết cũng báo lỗi
     function renderMinPeriodPerDayTable(minPeriods) {
-        // Xác định các lớp
         let classLabels = [];
         document.querySelectorAll('.big-table thead tr:nth-child(1) th').forEach((th, idx) => {
             if (idx >= 2 && th.colSpan === 2) {
@@ -232,18 +225,16 @@
             }
         });
 
-        // Tìm cột môn của từng lớp (bắt đầu từ col 2, rồi cách 2 cột/lớp)
         let monIndices = [];
         for (let i = 0; i < classLabels.length; i++) {
             monIndices.push(2 + i * 2);
         }
 
-        // Gom tiết mỗi ngày cho từng lớp
         let result = [];
         let table = document.querySelector('.big-table');
         let tbody = table?.tBodies[0];
         if (!tbody) return;
-        let dayTiet = {}; // {label: {thu: [tiết, tiết...]}}
+        let dayTiet = {};
         Array.from(tbody.rows).forEach((tr) => {
             let thu = tr.cells[0]?.querySelector('input')?.value || tr.cells[0]?.innerText.trim();
             let tiet = tr.cells[1]?.querySelector('input')?.value || tr.cells[1]?.innerText.trim();
@@ -253,27 +244,26 @@
                 if (mon && mon.trim()) {
                     dayTiet[label] = dayTiet[label] || {};
                     dayTiet[label][thu] = dayTiet[label][thu] || [];
-                    dayTiet[label][thu].push(tiet);
+                    dayTiet[label][thu].push(parseInt(tiet));
                 }
             });
         });
-        // Kiểm tra từng lớp - từng ngày
         for (let label of classLabels) {
             if (!dayTiet[label]) continue;
             for (let thu in dayTiet[label]) {
-                let tietArr = dayTiet[label][thu];
-                if (tietArr.length > 0 && tietArr.length < minPeriods) {
+                let tietArr = dayTiet[label][thu].slice().sort((a, b) => a - b);
+                // < minPeriods là lỗi
+                if (tietArr.length < minPeriods) {
                     result.push({
                         "Lớp": label,
                         "Thứ": thu,
                         "Số tiết": tietArr.length,
                         "Yêu cầu tối thiểu": minPeriods,
-                        "Các tiết": tietArr.slice().sort((a, b) => a - b).join(', ')
+                        "Các tiết": tietArr.join(', ')
                     });
                 }
             }
         }
-        // Render bảng báo lỗi
         let html = "";
         if (result.length) {
             html += `<table class="table table-bordered mb-3"><thead class="table-warning">
@@ -300,6 +290,7 @@
         document.getElementById('minPeriodDayContainer').innerHTML = html;
     }
 
+    // --- Các hàm lưu trạng thái, autosave, undo, redo ---
     function saveState() {
         let data = getCurrentData();
         undoStack.push(JSON.stringify(data));
@@ -316,7 +307,6 @@
         renderMinPeriodPerDayTable(parseInt(this.value) || 2);
     });  
 
-    // Auto-save khi chỉnh sửa ô bất kỳ
     document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.big-table input[type="text"]').forEach(input => {
             input.addEventListener('input', saveState);
@@ -336,7 +326,6 @@
         }
     });    
 
-    // Undo - Trước đó
     function undoChange() {
         if (undoStack.length > 1) {
             let current = undoStack.pop();
@@ -351,7 +340,6 @@
             renderDuplicateTable();
         }
     }
-    // Redo - Sau đó
     function redoChange() {
         if (redoStack.length > 0) {
             let next = JSON.parse(redoStack.pop());
@@ -365,6 +353,15 @@
             renderDuplicateTable();
         }
     }
+
+    // Gọi render khi tải trang lần đầu
+    window.onload = function(){
+        let slider = document.getElementById('zoom_range');
+        if (slider) updateZoomValue(slider.value);
+        renderDuplicateTable();
+        let minPeriods = parseInt(document.getElementById('min_period_input').value) || 2;
+        renderMinPeriodPerDayTable(minPeriods);
+    };
 </script>
 </body>
 </html>
