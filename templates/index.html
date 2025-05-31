@@ -41,6 +41,10 @@
                 <span id="autosave-status" style="margin-left:12px;color:#28a745;font-weight:500;"></span>
             </div>
         </div>
+        <div style="margin: 8px 0;">
+            <label for="min_period_input" style="font-weight:500;">Số tiết tối thiểu mỗi ngày/lớp:</label>
+            <input id="min_period_input" type="number" min="1" max="10" value="2" style="width:50px; text-align:right; margin-right:8px;">
+        </div>
 
         {% if headers %}
         <h5 style="text-align:center;">Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
@@ -50,7 +54,8 @@
                 
                 <!-- Bảng báo lỗi trùng giáo viên (render client, luôn tự động cập nhật) -->
                 <div id="duplicateTableContainer"></div>
-                
+                <div id="minPeriodDayContainer"></div>
+
                 <!-- Bảng thời khóa biểu -->
                 <table class="big-table">
                     <thead>
@@ -118,6 +123,8 @@
         let slider = document.getElementById('zoom_range');
         if (slider) updateZoomValue(slider.value);
         renderDuplicateTable();
+        let minPeriods = parseInt(document.getElementById('min_period_input').value) || 2;
+        renderMinPeriodPerDayTable(minPeriods);
     };
 
     // Undo/Redo stack + autosave (bán lưu)
@@ -214,6 +221,85 @@
         document.getElementById('duplicateTableContainer').innerHTML = html;
     }
 
+    // --- KIỂM TRA SỐ TIẾT TỐI THIỂU MỖI NGÀY CHO TỪNG LỚP ---
+
+    function renderMinPeriodPerDayTable(minPeriods) {
+        // Xác định các lớp
+        let classLabels = [];
+        document.querySelectorAll('.big-table thead tr:nth-child(1) th').forEach((th, idx) => {
+            if (idx >= 2 && th.colSpan === 2) {
+                classLabels.push(th.textContent.trim());
+            }
+        });
+
+        // Tìm cột môn của từng lớp (bắt đầu từ col 2, rồi cách 2 cột/lớp)
+        let monIndices = [];
+        for (let i = 0; i < classLabels.length; i++) {
+            monIndices.push(2 + i * 2);
+        }
+
+        // Gom tiết mỗi ngày cho từng lớp
+        let result = [];
+        let table = document.querySelector('.big-table');
+        let tbody = table?.tBodies[0];
+        if (!tbody) return;
+        let dayTiet = {}; // {label: {thu: [tiết, tiết...]}}
+        Array.from(tbody.rows).forEach((tr) => {
+            let thu = tr.cells[0]?.querySelector('input')?.value || tr.cells[0]?.innerText.trim();
+            let tiet = tr.cells[1]?.querySelector('input')?.value || tr.cells[1]?.innerText.trim();
+            monIndices.forEach((monColIdx, idx) => {
+                let mon = tr.cells[monColIdx]?.querySelector('input')?.value || "";
+                let label = classLabels[idx];
+                if (mon && mon.trim()) {
+                    dayTiet[label] = dayTiet[label] || {};
+                    dayTiet[label][thu] = dayTiet[label][thu] || [];
+                    dayTiet[label][thu].push(tiet);
+                }
+            });
+        });
+        // Kiểm tra từng lớp - từng ngày
+        for (let label of classLabels) {
+            if (!dayTiet[label]) continue;
+            for (let thu in dayTiet[label]) {
+                let tietArr = dayTiet[label][thu];
+                if (tietArr.length > 0 && tietArr.length < minPeriods) {
+                    result.push({
+                        "Lớp": label,
+                        "Thứ": thu,
+                        "Số tiết": tietArr.length,
+                        "Yêu cầu tối thiểu": minPeriods,
+                        "Các tiết": tietArr.slice().sort((a, b) => a - b).join(', ')
+                    });
+                }
+            }
+        }
+        // Render bảng báo lỗi
+        let html = "";
+        if (result.length) {
+            html += `<table class="table table-bordered mb-3"><thead class="table-warning">
+                <tr>
+                    <th>Lớp</th>
+                    <th>Thứ</th>
+                    <th>Số tiết thực tế</th>
+                    <th>Yêu cầu tối thiểu</th>
+                    <th>Các tiết</th>
+                </tr></thead><tbody>`;
+            result.forEach(row => {
+                html += `<tr class="table-warning">
+                    <td>${row["Lớp"]}</td>
+                    <td>${row["Thứ"]}</td>
+                    <td>${row["Số tiết"]}</td>
+                    <td>${row["Yêu cầu tối thiểu"]}</td>
+                    <td>${row["Các tiết"]}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+        } else {
+            html = `<div class="alert alert-success mb-3">Tất cả các lớp đều có số tiết tối thiểu hợp lệ trong mỗi ngày!</div>`;
+        }
+        document.getElementById('minPeriodDayContainer').innerHTML = html;
+    }
+
     function saveState() {
         let data = getCurrentData();
         undoStack.push(JSON.stringify(data));
@@ -222,7 +308,13 @@
         localStorage.setItem("tkb_autosave", JSON.stringify(data));
         if (autosaveStatus) autosaveStatus.innerText = "Đã lưu tạm";
         renderDuplicateTable();
-    }    
+        let minPeriods = parseInt(document.getElementById('min_period_input').value) || 2;
+        renderMinPeriodPerDayTable(minPeriods);
+    }
+
+    document.getElementById('min_period_input').addEventListener('input', function() {
+        renderMinPeriodPerDayTable(parseInt(this.value) || 2);
+    });  
 
     // Auto-save khi chỉnh sửa ô bất kỳ
     document.addEventListener('DOMContentLoaded', function() {
