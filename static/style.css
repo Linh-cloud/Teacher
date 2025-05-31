@@ -5,6 +5,42 @@ body {
 }
 
 /* =========== Table & Scroll =========== */
+.constraint-sidebar {
+    width: 260px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px #ddd;
+    padding: 10px 14px 14px 14px;
+    font-size: 15px;
+    margin-right: 24px;
+    float: left;
+}
+.constraint-title {
+    font-weight: bold;
+    color: #ed232c;
+    font-size: 17px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #f3f3f3;
+    margin-bottom: 8px;
+}
+.constraint-list {
+    list-style: none;
+    margin: 0; padding: 0;
+}
+.constraint-list li {
+    margin: 6px 0;
+    padding: 2px 0;
+}
+.constraint-list label {
+    cursor: pointer;
+    font-weight: 500;
+    color: #222;
+}
+.constraint-list input[type=checkbox] {
+    accent-color: #ed232c;
+    margin-right: 5px;
+    transform: scale(1.13);
+}
 .table-container, .excel-scroll-x {
     overflow-x: auto;
     overflow-y: auto;
@@ -146,7 +182,6 @@ body {
     background: #e1e1e1;
     border-color: #333;
 }
-
 /* =========== Responsive =========== */
 @media (max-width: 900px) {
     .big-table { min-width: 900px; }

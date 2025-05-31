@@ -33,6 +33,13 @@
                 <span id="zoom_percent" style="min-width: 32px; display: inline-block; text-align: right;">{{ (zoom*100)|round(0) if zoom else 100 }}</span> %
                 <input type="hidden" id="zoom" name="zoom" value="{{ zoom|default(1) }}">
             </div>
+            <div class="constraint-sidebar">
+                <div class="constraint-title">TKB CHÍNH KHOA</div>
+                <ul class="constraint-list">
+                    <li><label><input type="checkbox" checked disabled> 12. Số tiết tối đa trong buổi của môn</label></li>
+                    <!-- Có thể thêm các ràng buộc khác -->
+                </ul>
+            </div>
             <div class="col-auto" style="display:inline-block;">
                 <button type="button" class="btn btn-secondary" onclick="undoChange()">Trước đó</button>
                 <button type="button" class="btn btn-secondary" onclick="redoChange()">Sau đó</button>
@@ -45,7 +52,6 @@
             <label for="min_period_input" style="font-weight:500;">Số tiết tối thiểu mỗi ngày/lớp:</label>
             <input id="min_period_input" type="number" min="1" max="10" value="2" style="width:50px; text-align:right; margin-right:8px;">
         </div>
-
         {% if headers %}
         <h5 style="text-align:center;">Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
         <div class="excel-scroll-x"
