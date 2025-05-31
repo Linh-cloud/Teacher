@@ -49,6 +49,32 @@ def check_duplicates(tkb_data, num_classes):
         duplicate_cells.append(list(set(dups)))
     return duplicate_cells
 
+def check_min_periods_per_day(tkb_data, class_labels, min_periods=2, tiet_col=1):
+    violations = []
+    for class_idx, label in enumerate(class_labels):
+        day_tiet = {}  # Thứ -> list tiết
+        for row in tkb_data:
+            thu = row[0]
+            tiet = row[tiet_col]
+            try:
+                tiet_num = int(tiet)
+            except Exception:
+                continue
+            mon = row[2 + class_idx*2]
+            if mon.strip():
+                day_tiet.setdefault(thu, []).append(tiet_num)
+        # Kiểm tra mỗi ngày
+        for thu, tiet_list in day_tiet.items():
+            if 0 < len(tiet_list) < min_periods:
+                violations.append({
+                    "Lớp": label,
+                    "Thứ": thu,
+                    "Số tiết": len(tiet_list),
+                    "Yêu cầu tối thiểu": min_periods,
+                    "Các tiết": sorted(tiet_list)
+                })
+    return violations
+
 # Hàm kiểm tra trùng giáo viên, trả về danh sách vi phạm và cell bị trùng
 def check_gv_trung_tiet_v2(tkb_data, headers, class_labels):
     vi_pham = []
