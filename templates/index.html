@@ -88,20 +88,17 @@
                         <tbody>
                         {% for row_idx, row in enumerate(tkb_data) %}
                             <tr>
-                                {% if duplicate_cells %}
-                                    {% for col_idx, cell in enumerate(row) %}
-                                        <td>
-                                            <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}"
-                                                class="big-input{% if col_idx in duplicate_cells[row_idx] %} dup-cell{% endif %}">
-                                        </td>
-                                    {% endfor %}
+                            {% for col_idx, cell in enumerate(row) %}
+                                {% if dup_cells and (row_idx, col_idx) in dup_cells %}
+                                    <td class="dup-cell">
+                                        <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input dup-cell">
+                                    </td>
                                 {% else %}
-                                    {% for col_idx, cell in enumerate(row) %}
-                                        <td>
-                                            <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input">
-                                        </td>
-                                    {% endfor %}
+                                    <td>
+                                        <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input">
+                                    </td>
                                 {% endif %}
+                            {% endfor %}
                             </tr>
                         {% endfor %}
                         </tbody>

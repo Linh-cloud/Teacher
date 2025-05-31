@@ -7,41 +7,9 @@ import json
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.secret_key = 'Ego'  # Đặt chuỗi bí mật bất kỳ, KHÔNG để trống
-class_labels = ['9A', '9B', '9C', '8A', '8B', '8C', '7A', '7B', '7C', '6A', '6B', '6C', '6D']
+app.secret_key = 'Ego'
 
-def generate_teacher_day_schedule(tkb_data):
-    teacher_day_schedule = {}
-    for row_data in tkb_data:
-        weekday = row_data[0]  # "Thứ"
-        if weekday not in teacher_day_schedule:
-            teacher_day_schedule[weekday] = []
-        # Giáo viên ở cột lẻ (bắt đầu từ cột 4, 6, 8,...)
-        for col_idx in range(2, len(row_data), 2):
-            if col_idx + 1 < len(row_data):
-                teacher = row_data[col_idx + 1]
-                if teacher and teacher not in teacher_day_schedule[weekday]:
-                    teacher_day_schedule[weekday].append(teacher)
-    return teacher_day_schedule
-
-def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
-    # Đọc danh sách giáo viên từ file JSON
-    try:
-        with open(teachers_list_path, "r", encoding="utf-8") as f:
-            existing_teachers = json.load(f)["Giáo viên"]
-    except Exception:
-        existing_teachers = []
-    # Lấy thông tin giáo viên dạy theo từng ngày
-    teacher_day_schedule = generate_teacher_day_schedule(tkb_data)
-    # Khởi tạo dictionary: giáo viên -> list ngày không dạy
-    teacher_off_schedule = {}
-    for teacher in existing_teachers:
-        days_off = []
-        for weekday in teacher_day_schedule.keys():
-            if teacher not in teacher_day_schedule[weekday]:
-                days_off.append(weekday)
-        teacher_off_schedule[teacher] = days_off
-    return teacher_off_schedule, list(teacher_day_schedule.keys())
+DEFAULT_CLASS_LABELS = ['9A', '9B', '9C', '8A', '8B', '8C', '7A', '7B', '7C', '6A', '6B', '6C', '6D']
 
 def process_tkb_file(filepath):
     df = pd.read_excel(filepath, sheet_name=0, header=None)
@@ -64,7 +32,7 @@ def process_tkb_file(filepath):
     headers = ["Thứ", "Tiết"]
     for label in class_labels:
         headers.extend([f"{label} - Môn", f"{label} - GV"])
-    return headers, tkb_data, num_classes
+    return headers, tkb_data, num_classes, class_labels
 
 def check_duplicates(tkb_data, num_classes):
     duplicate_cells = []
@@ -81,52 +49,65 @@ def check_duplicates(tkb_data, num_classes):
         duplicate_cells.append(list(set(dups)))
     return duplicate_cells
 
-# hàm kiểm tra trùng giáo viên
-def check_gv_trung_tiet(tkb_data, headers, class_labels):
+# Hàm kiểm tra trùng giáo viên, trả về danh sách vi phạm và cell bị trùng
+def check_gv_trung_tiet_v2(tkb_data, headers, class_labels):
     vi_pham = []
-    # Xác định các cột giáo viên theo từng lớp
+    dup_cells = set()
     gv_cols = []
     for idx, h in enumerate(headers):
         for label in class_labels:
             if h == f"{label} - GV":
                 gv_cols.append((label, idx))
-    # Duyệt từng hàng (mỗi tiết)
     for row_idx, row in enumerate(tkb_data):
-        # Gom giáo viên của tất cả lớp ở hàng này
-        gvs = []
+        gvs = {}
         for label, col in gv_cols:
             gv = row[col].strip() if col < len(row) else ""
-            if gv: gvs.append(gv)
-        # Đếm số lần xuất hiện
-        seen = {}
-        for gv in gvs:
-            seen[gv] = seen.get(gv, 0) + 1
-        for gv, cnt in seen.items():
-            if cnt > 1:
-                # Lấy thông tin vi phạm
-                thu = row[0]
-                tiet = row[1]
+            if gv:
+                gvs.setdefault(gv, []).append(col)
+        for gv, cols in gvs.items():
+            if len(cols) > 1:
+                for col in cols:
+                    dup_cells.add((row_idx, col))
                 vi_pham.append({
                     "Giáo viên": gv,
-                    "Thứ": thu,
-                    "Tiết": tiet,
-                    "Số lần trùng": cnt,
-                    "Dòng": row_idx + 1  # chỉ số dòng (có thể bỏ qua)
+                    "Thứ": row[0],
+                    "Tiết": row[1],
+                    "Số lần trùng": len(cols)
                 })
-    return vi_pham
+    return vi_pham, dup_cells
 
-# route kiểm tra trùng giáo viên
-@app.route('/kiemtra_trung_tiet_gv', methods=['POST'])
-def kiemtra_trung_tiet_gv():
-    tkb_data = pickle.loads(session['tkb_data'])
-    headers = pickle.loads(session['headers'])
-    class_labels = session.get('class_labels', [])
-    vi_pham = check_gv_trung_tiet(tkb_data, headers, class_labels)
-    return render_template('gv_trung_tiet.html', vi_pham=vi_pham)
+# Thống kê ngày nghỉ giáo viên
+def generate_teacher_day_schedule(tkb_data):
+    teacher_day_schedule = {}
+    for row_data in tkb_data:
+        weekday = row_data[0]
+        if weekday not in teacher_day_schedule:
+            teacher_day_schedule[weekday] = []
+        for col_idx in range(2, len(row_data), 2):
+            if col_idx + 1 < len(row_data):
+                teacher = row_data[col_idx + 1]
+                if teacher and teacher not in teacher_day_schedule[weekday]:
+                    teacher_day_schedule[weekday].append(teacher)
+    return teacher_day_schedule
+
+def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
+    try:
+        with open(teachers_list_path, "r", encoding="utf-8") as f:
+            existing_teachers = json.load(f)["Giáo viên"]
+    except Exception:
+        existing_teachers = []
+    teacher_day_schedule = generate_teacher_day_schedule(tkb_data)
+    teacher_off_schedule = {}
+    for teacher in existing_teachers:
+        days_off = []
+        for weekday in teacher_day_schedule.keys():
+            if teacher not in teacher_day_schedule[weekday]:
+                days_off.append(weekday)
+        teacher_off_schedule[teacher] = days_off
+    return teacher_off_schedule, list(teacher_day_schedule.keys())
 
 @app.route('/teacher-off')
 def teacher_off():
-    # Lấy tkb_data từ session hoặc nơi bạn lưu
     tkb_data = pickle.loads(session.get('tkb_data', pickle.dumps([])))
     teacher_off_schedule, weekdays = get_teacher_off_schedule(tkb_data)
     return render_template(
@@ -142,6 +123,9 @@ def index():
     duplicate_cells = None
     num_classes = 0
     zoom = 1.0
+    class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
+    vi_pham = []
+    dup_cells = set()
 
     if request.method == 'POST':
         zoom = request.form.get('zoom_manual') or request.form.get('zoom')
@@ -149,31 +133,26 @@ def index():
             zoom = float(zoom)
         except:
             zoom = 1.0
-        zoom = max(0.3, min(zoom, 2))  # Giới hạn zoom từ 0.3 đến 2.0
+        zoom = max(0.3, min(zoom, 2))
         file = request.files.get('tkb_file')
         action = request.form.get('action')
 
-        if action == "zoom_in":
-            zoom = min(zoom + 0.05, 2)
-        elif action == "zoom_out":
-            zoom = max(zoom - 0.05, 0.3)
-
-        # Nếu upload file mới
         if file and file.filename.endswith('.xlsx'):
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
             file.save(filepath)
-            headers, tkb_data, num_classes = process_tkb_file(filepath)
+            headers, tkb_data, num_classes, class_labels = process_tkb_file(filepath)
             session['headers'] = pickle.dumps(headers)
             session['tkb_data'] = pickle.dumps(tkb_data)
             session['num_classes'] = num_classes
+            session['class_labels'] = class_labels
         else:
             headers = pickle.loads(session.get('headers', pickle.dumps([])))
             tkb_data = pickle.loads(session.get('tkb_data', pickle.dumps([])))
             num_classes = session.get('num_classes', 0)
+            class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
 
-            # Xử lý khi Lưu chỉnh sửa
             if action == 'save_edit':
                 new_data = []
                 for row_idx, row in enumerate(tkb_data):
@@ -187,10 +166,11 @@ def index():
                 session['tkb_data'] = pickle.dumps(tkb_data)
 
         # Kiểm tra trùng giáo viên
+        vi_pham, dup_cells = check_gv_trung_tiet_v2(tkb_data, headers, class_labels)
+        # Kiểm tra trùng ô GV (nếu muốn)
         if action == 'check_duplicates':
             duplicate_cells = check_duplicates(tkb_data, num_classes)
 
-        # Lưu lại zoom vào session
         session['zoom'] = zoom
 
     else:
@@ -199,11 +179,18 @@ def index():
             headers = pickle.loads(session['headers'])
             tkb_data = pickle.loads(session['tkb_data'])
             num_classes = session.get('num_classes', 0)
+            class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
+        # Kiểm tra trùng giáo viên mỗi lần GET nếu đã có dữ liệu
+        if headers and tkb_data:
+            vi_pham, dup_cells = check_gv_trung_tiet_v2(tkb_data, headers, class_labels)
+
     return render_template(
         'index.html',
         headers=headers,
         tkb_data=tkb_data,
         class_labels=class_labels,
+        vi_pham=vi_pham,
+        dup_cells=dup_cells,
         duplicate_cells=duplicate_cells,
         zip=zip,
         enumerate=enumerate,
