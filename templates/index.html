@@ -290,6 +290,84 @@
         document.getElementById('minPeriodDayContainer').innerHTML = html;
     }
 
+    // --- KIỂM TRA TIẾT KHÔNG LIỀN (xé lẻ) ---
+    function renderConsecutivePeriodsTable() {
+        // Lấy các lớp và vị trí cột môn
+        let classLabels = [];
+        document.querySelectorAll('.big-table thead tr:nth-child(1) th').forEach((th, idx) => {
+            if (idx >= 2 && th.colSpan === 2) classLabels.push(th.textContent.trim());
+        });
+        let monIndices = [];
+        for (let i = 0; i < classLabels.length; i++) monIndices.push(2 + i * 2);
+
+        // Gom tiết mỗi ngày cho từng lớp
+        let table = document.querySelector('.big-table');
+        let tbody = table?.tBodies[0];
+        if (!tbody) return;
+        let dayTiet = {};
+        Array.from(tbody.rows).forEach((tr) => {
+            let thu = tr.cells[0]?.querySelector('input')?.value || tr.cells[0]?.innerText.trim();
+            let tiet = tr.cells[1]?.querySelector('input')?.value || tr.cells[1]?.innerText.trim();
+            monIndices.forEach((monColIdx, idx) => {
+                let mon = tr.cells[monColIdx]?.querySelector('input')?.value || "";
+                let label = classLabels[idx];
+                if (mon && mon.trim()) {
+                    dayTiet[label] = dayTiet[label] || {};
+                    dayTiet[label][thu] = dayTiet[label][thu] || [];
+                    dayTiet[label][thu].push(parseInt(tiet));
+                }
+            });
+        });
+
+        // Kiểm tra xé lẻ tiết (phải liền kề, ví dụ: 2,3,4 là ok; 1,3 là xé lẻ)
+        let result = [];
+        for (let label of classLabels) {
+            if (!dayTiet[label]) continue;
+            for (let thu in dayTiet[label]) {
+                let tietArr = dayTiet[label][thu].slice().sort((a, b) => a - b);
+                if (tietArr.length <= 1) continue; // 1 tiết hoặc 0 tiết thì thôi, chỉ xét xé lẻ với >=2 tiết
+                let isConsecutive = true;
+                for (let i = 1; i < tietArr.length; i++) {
+                    if (tietArr[i] - tietArr[i - 1] !== 1) {
+                        isConsecutive = false;
+                        break;
+                    }
+                }
+                if (!isConsecutive) {
+                    result.push({
+                        "Lớp": label,
+                        "Thứ": thu,
+                        "Các tiết": tietArr.join(', '),
+                        "Thông báo": "Các tiết không liền nhau (xé lẻ)!"
+                    });
+                }
+            }
+        }
+        // Render ra bảng cảnh báo
+        let html = "";
+        if (result.length) {
+            html += `<table class="table table-bordered mb-3"><thead class="table-warning">
+                <tr>
+                    <th>Lớp</th>
+                    <th>Thứ</th>
+                    <th>Các tiết</th>
+                    <th>Thông báo</th>
+                </tr></thead><tbody>`;
+            result.forEach(row => {
+                html += `<tr class="table-warning">
+                    <td>${row["Lớp"]}</td>
+                    <td>${row["Thứ"]}</td>
+                    <td>${row["Các tiết"]}</td>
+                    <td>${row["Thông báo"]}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+        } else {
+            html = `<div class="alert alert-success mb-3">Không có lớp nào bị xé lẻ tiết trong ngày!</div>`;
+        }
+        document.getElementById('consecutivePeriodsContainer').innerHTML = html;
+    }
+
     // --- Các hàm lưu trạng thái, autosave, undo, redo ---
     function saveState() {
         let data = getCurrentData();
@@ -301,6 +379,7 @@
         renderDuplicateTable();
         let minPeriods = parseInt(document.getElementById('min_period_input').value) || 2;
         renderMinPeriodPerDayTable(minPeriods);
+        renderConsecutivePeriodsTable();
     }
 
     document.getElementById('min_period_input').addEventListener('input', function() {
@@ -361,6 +440,7 @@
         renderDuplicateTable();
         let minPeriods = parseInt(document.getElementById('min_period_input').value) || 2;
         renderMinPeriodPerDayTable(minPeriods);
+        renderConsecutivePeriodsTable();
     };
 </script>
 </body>
