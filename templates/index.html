@@ -82,6 +82,30 @@
                         {% endfor %}
                         </tbody>
                     </table>
+                    <!-- table kiểm tra trùng giáo viên -->
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Giáo viên</th>
+                                <th>Thứ</th>
+                                <th>Tiết</th>
+                                <th>Số lần trùng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in vi_pham %}
+                            <tr class="table-danger">
+                                <td>{{ row['Giáo viên'] }}</td>
+                                <td>{{ row['Thứ'] }}</td>
+                                <td>{{ row['Tiết'] }}</td>
+                                <td>{{ row['Số lần trùng'] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if not vi_pham %}
+                    <div class="alert alert-success">Không có giáo viên nào bị trùng tiết!</div>
+                    {% endif %}
                 </div>
             </div>
         {% endif %}

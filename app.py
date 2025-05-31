@@ -81,6 +81,49 @@ def check_duplicates(tkb_data, num_classes):
         duplicate_cells.append(list(set(dups)))
     return duplicate_cells
 
+# hàm kiểm tra trùng giáo viên
+def check_gv_trung_tiet(tkb_data, headers, class_labels):
+    vi_pham = []
+    # Xác định các cột giáo viên theo từng lớp
+    gv_cols = []
+    for idx, h in enumerate(headers):
+        for label in class_labels:
+            if h == f"{label} - GV":
+                gv_cols.append((label, idx))
+    # Duyệt từng hàng (mỗi tiết)
+    for row_idx, row in enumerate(tkb_data):
+        # Gom giáo viên của tất cả lớp ở hàng này
+        gvs = []
+        for label, col in gv_cols:
+            gv = row[col].strip() if col < len(row) else ""
+            if gv: gvs.append(gv)
+        # Đếm số lần xuất hiện
+        seen = {}
+        for gv in gvs:
+            seen[gv] = seen.get(gv, 0) + 1
+        for gv, cnt in seen.items():
+            if cnt > 1:
+                # Lấy thông tin vi phạm
+                thu = row[0]
+                tiet = row[1]
+                vi_pham.append({
+                    "Giáo viên": gv,
+                    "Thứ": thu,
+                    "Tiết": tiet,
+                    "Số lần trùng": cnt,
+                    "Dòng": row_idx + 1  # chỉ số dòng (có thể bỏ qua)
+                })
+    return vi_pham
+
+# route kiểm tra trùng giáo viên
+@app.route('/kiemtra_trung_tiet_gv', methods=['POST'])
+def kiemtra_trung_tiet_gv():
+    tkb_data = pickle.loads(session['tkb_data'])
+    headers = pickle.loads(session['headers'])
+    class_labels = session.get('class_labels', [])
+    vi_pham = check_gv_trung_tiet(tkb_data, headers, class_labels)
+    return render_template('gv_trung_tiet.html', vi_pham=vi_pham)
+
 @app.route('/teacher-off')
 def teacher_off():
     # Lấy tkb_data từ session hoặc nơi bạn lưu
