@@ -160,34 +160,6 @@
         return data;
     }
 
-    function saveState() {
-        let data = getCurrentData();
-        undoStack.push(JSON.stringify(data));
-        if (undoStack.length > 50) undoStack.shift();
-        redoStack = [];
-        localStorage.setItem("tkb_autosave", JSON.stringify(data));
-        if (autosaveStatus) autosaveStatus.innerText = "Đã lưu tạm";
-    }
-
-    // Auto-save khi chỉnh sửa ô bất kỳ
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.big-table input[type="text"]').forEach(input => {
-            input.addEventListener('input', saveState);
-        });
-        let autosave = localStorage.getItem("tkb_autosave");
-        if (autosave) {
-            if (confirm("Bạn có muốn khôi phục dữ liệu chưa lưu không?")) {
-                let arr = JSON.parse(autosave);
-                document.querySelectorAll('.big-table tbody tr').forEach((tr, i) => {
-                    tr.querySelectorAll('input[type="text"]').forEach((input, j) => {
-                        if (arr[i] && arr[i][j]) input.value = arr[i][j];
-                    });
-                });
-                autosaveStatus.innerText = "Đã khôi phục dữ liệu tạm!";
-            }
-        }
-    });
-
     function checkDuplicateTeacherCells() {
         // Bỏ highlight cũ
         document.querySelectorAll('.big-input').forEach(inp => {
@@ -222,6 +194,35 @@
         });
     }
 
+    function saveState() {
+        let data = getCurrentData();
+        undoStack.push(JSON.stringify(data));
+        if (undoStack.length > 50) undoStack.shift();
+        redoStack = [];
+        localStorage.setItem("tkb_autosave", JSON.stringify(data));
+        if (autosaveStatus) autosaveStatus.innerText = "Đã lưu tạm";
+        checkDuplicateTeacherCells(); // Gọi kiểm tra sau mỗi autosave
+    }    
+
+    // Auto-save khi chỉnh sửa ô bất kỳ
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.big-table input[type="text"]').forEach(input => {
+            input.addEventListener('input', saveState);
+        });
+        let autosave = localStorage.getItem("tkb_autosave");
+        if (autosave) {
+            if (confirm("Bạn có muốn khôi phục dữ liệu chưa lưu không?")) {
+                let arr = JSON.parse(autosave);
+                document.querySelectorAll('.big-table tbody tr').forEach((tr, i) => {
+                    tr.querySelectorAll('input[type="text"]').forEach((input, j) => {        
+                        if (arr[i] && arr[i][j]) input.value = arr[i][j];
+                    });
+                });
+                autosaveStatus.innerText = "Đã khôi phục dữ liệu tạm!";
+            }
+        }    
+    });    
+
     // Undo - Trước đó
     function undoChange() {
         if (undoStack.length > 1) {
@@ -235,6 +236,7 @@
             });
             if (autosaveStatus) autosaveStatus.innerText = "Hoàn tác thành công";
         }
+        checkDuplicateTeacherCells();
     }
     // Redo - Sau đó
     function redoChange() {
@@ -248,6 +250,7 @@
             });
             if (autosaveStatus) autosaveStatus.innerText = "Đã redo";
         }
+        checkDuplicateTeacherCells();
     }
 </script>
 </body>
