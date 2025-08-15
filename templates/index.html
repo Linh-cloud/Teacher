@@ -1,453 +1,478 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Kiểm tra thời khóa biểu giáo viên</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body style="margin:0; padding:0; background: #f7f7f9;">
-<!-- Mẫu ví dụ -->
-<button type="button" class="btn btn-info" onclick="document.getElementById('mau_tkb_img').style.display='block';">
-    👁 Xem mẫu ví dụ đầu vào
-</button>
-<div id="mau_tkb_img" style="display:none; margin-bottom:15px; text-align:center;">
-    <img src="{{ url_for('static', filename='sample.png') }}" alt="Mẫu ví dụ đầu vào" style="max-width:100%;border:1px solid #bbb;box-shadow:0 2px 8px #eaeaea;padding:4px; background:#fff;">
-    <div>
-        <button type="button" class="btn btn-secondary btn-sm mt-2" onclick="document.getElementById('mau_tkb_img').style.display='none';">Đóng mẫu</button>
+{% extends "base.html" %}
+{% block title %}Kiểm tra thời khóa biểu giáo viên{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-start gap-3 flex-wrap">
+
+  <!-- Sidebar ràng buộc -->
+  <aside class="constraint-sidebar">
+    <div class="constraint-title">TKB CHÍNH KHOA</div>
+    <ul class="constraint-list">
+      <li>
+        <label>
+          <input type="checkbox" id="rb_max_period_per_session" checked>
+          12. Số tiết tối đa trong buổi của môn
+        </label>
+      </li>
+      <!-- Có thể bổ sung ràng buộc khác -->
+    </ul>
+  </aside>
+
+  <main class="flex-grow-1">
+
+    <!-- Mẫu ví dụ -->
+    <div class="mb-3">
+      <button type="button" class="btn btn-info btn-sm" id="btnToggleSample">
+        👁 Xem mẫu ví dụ đầu vào
+      </button>
+      <div id="mau_tkb_img" class="mt-2 d-none text-center">
+        <img src="{{ url_for('static', filename='sample.png') }}"
+             alt="Mẫu ví dụ đầu vào"
+             style="max-width:100%;border:1px solid #bbb;box-shadow:0 2px 8px #eaeaea;padding:4px; background:#fff;">
+        <div class="mt-2">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnHideSample">Đóng mẫu</button>
+        </div>
+      </div>
     </div>
-</div>
-<div style="padding: 20px 0 0 0;">
-    <h2 style="text-align:center;">Kiểm tra thời khóa biểu giáo viên</h2>
-    <form id="tkbForm" method="POST" enctype="multipart/form-data" class="mb-3" style="text-align: center;">
-        <div class="row mb-2 align-items-center" style="justify-content:center;">
-            <div class="col" style="display:inline-block;min-width:300px;">
-                <input class="form-control" type="file" name="tkb_file" accept=".xlsx" id="tkb_file_input">
-            </div>
-            <div class="zoom-slider-group" style="display:inline-flex; align-items:center; gap:8px; margin-bottom:12px;">
-                <button type="button" class="zoom-btn" onclick="updateZoom(-0.05)">&#8722;</button>
-                <input id="zoom_range" name="zoom_range" type="range" min="0.3" max="2" step="0.01"
-                    value="{{ zoom|default(1) }}" class="zoom-range"
-                    oninput="updateZoomValue(this.value)">
-                <button type="button" class="zoom-btn" onclick="updateZoom(0.05)">&#43;</button>
-                <span id="zoom_percent" style="min-width: 32px; display: inline-block; text-align: right;">{{ (zoom*100)|round(0) if zoom else 100 }}</span> %
-                <input type="hidden" id="zoom" name="zoom" value="{{ zoom|default(1) }}">
-            </div>
-            <div class="constraint-sidebar">
-                <div class="constraint-title">TKB CHÍNH KHOA</div>
-                <ul class="constraint-list">
-                    <li><label><input type="checkbox" checked active> 12. Số tiết tối đa trong buổi của môn</label></li>
-                    <!-- Có thể thêm các ràng buộc khác -->
-                </ul>
-            </div>
-            <div class="col-auto" style="display:inline-block;">
-                <button type="button" class="btn btn-secondary" onclick="undoChange()">Trước đó</button>
-                <button type="button" class="btn btn-secondary" onclick="redoChange()">Sau đó</button>
-                <button class="btn btn-success" type="submit" name="action" value="save_edit">Lưu chỉnh sửa</button>
-                <a href="/teacher-off" class="btn btn-info" style="margin-left:8px;">Thống kê ngày nghỉ GV</a>
-                <span id="autosave-status" style="margin-left:12px;color:#28a745;font-weight:500;"></span>
-            </div>
-        </div>
-        <div style="margin: 8px 0;">
-            <label for="min_period_input" style="font-weight:500;">Số tiết tối thiểu mỗi ngày/lớp:</label>
-            <input id="min_period_input" type="number" min="1" max="10" value="2" style="width:50px; text-align:right; margin-right:8px;">
-        </div>
-        {% if headers %}
-        <h5 style="text-align:center;">Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
-        <div class="excel-scroll-x"
-            style="overflow-x: auto; overflow-y: auto; width: 100%; max-width: 1800px; max-height: 600px; margin: 0 auto; padding-bottom: 0; background: #fff;">
-            <div class="zoom-box" style="transform: scale({{ zoom|default(1) }}); transform-origin: top left; width: max-content;">
-                
-                <!-- Bảng báo lỗi trùng giáo viên (render client, luôn tự động cập nhật) -->
-                <div id="duplicateTableContainer"></div>
-                <div id="minPeriodDayContainer"></div>
-                <div id="consecutivePeriodsContainer"></div>
-                <!-- Bạn có thể thêm dòng trên để check liên tiếp nếu muốn -->
 
-                <!-- Bảng thời khóa biểu -->
-                <table class="big-table">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" class="header-small">Thứ</th>
-                            <th rowspan="2" class="header-tiet">Tiết</th>
-                            {% for label in class_labels %}
-                                <th colspan="2" class="header-class">{{ label }}</th>
-                            {% endfor %}
-                        </tr>
-                        <tr>
-                            {% for label in class_labels %}
-                                <th class="header-mon">Môn</th>
-                                <th class="header-gv">GV dạy</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for row_idx, row in enumerate(tkb_data) %}
-                        <tr>
-                        {% for col_idx, cell in enumerate(row) %}
-                            <td>
-                                <input type="text" name="cell_{{row_idx}}_{{col_idx}}" value="{{ cell }}" class="big-input">
-                            </td>
-                        {% endfor %}
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <h2 class="text-center mb-3">Kiểm tra thời khóa biểu giáo viên</h2>
+
+    <form id="tkbForm" method="POST" enctype="multipart/form-data" class="mb-3">
+      <div class="row gy-2 align-items-center justify-content-center">
+
+        <!-- File input -->
+        <div class="col-12 col-md-5 col-lg-4">
+          <input class="form-control" type="file" name="tkb_file" accept=".xlsx" id="tkb_file_input">
         </div>
-        {% endif %}
+
+        <!-- Zoom controls -->
+        <div class="col-12 col-md-7 col-lg-6">
+          <div class="zoom-slider-group">
+            <button type="button" class="zoom-btn" id="zoomMinus" aria-label="Giảm zoom">−</button>
+            <input id="zoom_range" name="zoom_range" type="range" min="0.3" max="2" step="0.01"
+                   value="{{ zoom|default(1) }}" class="zoom-range" aria-label="Phóng to/thu nhỏ">
+            <button type="button" class="zoom-btn" id="zoomPlus" aria-label="Tăng zoom">+</button>
+            <span id="zoom_percent" class="ms-1" style="min-width: 36px; display:inline-block; text-align:right;">
+              {{ (zoom*100)|round(0) if zoom else 100 }}
+            </span> %
+            <input type="hidden" id="zoom" name="zoom" value="{{ zoom|default(1) }}">
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-12 col-lg-10 d-flex flex-wrap gap-2 justify-content-center">
+          <div class="btn-group" role="group" aria-label="Hoàn tác/làm lại">
+            <button type="button" class="btn btn-outline-secondary" id="btnUndo">Trước đó</button>
+            <button type="button" class="btn btn-outline-secondary" id="btnRedo">Sau đó</button>
+          </div>
+          <button class="btn btn-success" type="submit" name="action" value="save_edit">Lưu chỉnh sửa</button>
+          <a href="{{ url_for('teacher_off') }}" class="btn btn-info">Thống kê ngày nghỉ GV</a>
+          <span id="autosave-status" class="align-self-center text-success fw-medium"></span>
+        </div>
+      </div>
+
+      <div class="mt-3 text-center">
+        <label for="min_period_input" class="fw-semibold me-2">Số tiết tối thiểu mỗi ngày/lớp:</label>
+        <input id="min_period_input" type="number" min="1" max="10" value="2" style="width:64px; text-align:right;">
+      </div>
+
+      {% if headers %}
+      <h5 class="text-center mt-4">Bảng thời khóa biểu (cho phép chỉnh sửa):</h5>
+
+      <!-- Báo cáo/vi phạm -->
+      <div id="duplicateTableContainer" class="mt-3"></div>
+      <div id="minPeriodDayContainer" class="mt-3"></div>
+      <div id="consecutivePeriodsContainer" class="mt-3"></div>
+
+      <!-- Bảng TKB -->
+      <div class="table-container mt-2">
+        <div class="zoom-box" style="transform: scale({{ zoom|default(1) }});">
+          <table class="big-table" id="tkbTable" data-col-offset="2">
+            <thead>
+              <tr>
+                <th rowspan="2" class="header-small">Thứ</th>
+                <th rowspan="2" class="header-tiet">Tiết</th>
+                {% for label in class_labels %}
+                  <th colspan="2" class="header-class">{{ label }}</th>
+                {% endfor %}
+              </tr>
+              <tr>
+                {% for _ in class_labels %}
+                  <th class="header-mon">Môn</th>
+                  <th class="header-gv">GV dạy</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for row_idx, row in enumerate(tkb_data) %}
+                <tr>
+                  {% for col_idx, cell in enumerate(row) %}
+                    <td>
+                      <input type="text"
+                             name="cell_{{row_idx}}_{{col_idx}}"
+                             value="{{ cell }}"
+                             class="big-input"
+                             autocomplete="off"
+                             inputmode="text" />
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      {% endif %}
     </form>
-</div>
 
+  </main>
+</div>
+{% endblock %}
+
+{% block extra_script %}
 <script>
-    // Tự động submit khi chọn file mới
-    document.addEventListener('DOMContentLoaded', function() {
-        var fileInput = document.getElementById('tkb_file_input');
-        if (fileInput) {
-            fileInput.addEventListener('change', function() {
-                if (fileInput.files.length > 0) {
-                    fileInput.closest('form').submit();
-                }
-            });
-        }
+/* ========= Helpers ========= */
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+function debounce(fn, wait=150){
+  let t; return (...args) => { clearTimeout(t); t=setTimeout(()=>fn(...args), wait); };
+}
+
+/* ========= Sample toggle ========= */
+(() => {
+  const btnShow = $('#btnToggleSample');
+  const btnHide = $('#btnHideSample');
+  const box = $('#mau_tkb_img');
+  if (btnShow && box) btnShow.addEventListener('click', ()=> box.classList.toggle('d-none'));
+  if (btnHide && box) btnHide.addEventListener('click', ()=> box.classList.add('d-none'));
+})();
+
+/* ========= Auto-submit when choose file ========= */
+(() => {
+  const fileInput = $('#tkb_file_input');
+  const form = $('#tkbForm');
+  if (fileInput && form) {
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files && fileInput.files.length) form.submit();
+    });
+  }
+})();
+
+/* ========= Zoom controls ========= */
+(() => {
+  const range = $('#zoom_range');
+  const percent = $('#zoom_percent');
+  const hiddenZoom = $('#zoom');
+  const btnMinus = $('#zoomMinus');
+  const btnPlus = $('#zoomPlus');
+
+  function apply(val){
+    const v = parseFloat(val) || 1;
+    if (percent) percent.textContent = Math.round(v*100);
+    if (hiddenZoom) hiddenZoom.value = v;
+    // Hàm helper có trong base.html (applyZoom) hoặc fallback
+    if (window.applyZoom) window.applyZoom(v);
+    else { const box = $('.zoom-box'); if (box) box.style.transform = `scale(${v})`; }
+  }
+  if (range) {
+    range.addEventListener('input', e => apply(e.target.value));
+    apply(range.value);
+  }
+  if (btnMinus) btnMinus.addEventListener('click', () => {
+    if (!range) return;
+    const v = clamp(parseFloat(range.value||"1") - 0.05, 0.3, 2);
+    range.value = v.toFixed(2); apply(v);
+  });
+  if (btnPlus) btnPlus.addEventListener('click', () => {
+    if (!range) return;
+    const v = clamp(parseFloat(range.value||"1") + 0.05, 0.3, 2);
+    range.value = v.toFixed(2); apply(v);
+  });
+})();
+
+/* ========= Undo/Redo + Autosave ========= */
+const undoStack = [];
+let   redoStack = [];
+const autosaveStatus = $('#autosave-status');
+
+function getCurrentData(){
+  const data = [];
+  $$('#tkbTable tbody tr').forEach(tr=>{
+    const row=[];
+    $$('input[type="text"]', tr).forEach(inp=>row.push(inp.value));
+    data.push(row);
+  });
+  return data;
+}
+
+function putData(data){
+  $$('#tkbTable tbody tr').forEach((tr,i)=>{
+    $$('input[type="text"]', tr).forEach((inp,j)=>{
+      if (data[i] && typeof data[i][j] !== 'undefined') inp.value = data[i][j];
+    });
+  });
+}
+
+function markSaved(text="Đã lưu tạm"){
+  if (autosaveStatus){ autosaveStatus.textContent = text; }
+}
+
+const saveState = debounce(()=>{
+  const data = getCurrentData();
+  undoStack.push(JSON.stringify(data));
+  if (undoStack.length > 50) undoStack.shift();
+  redoStack = [];
+  localStorage.setItem("tkb_autosave", JSON.stringify(data));
+  markSaved("Đã lưu tạm");
+  renderAllReports();
+}, 200);
+
+function initAutosave(){
+  // seed state
+  undoStack.length = 0;
+  redoStack = [];
+  undoStack.push(JSON.stringify(getCurrentData()));
+
+  // input listeners
+  $$('#tkbTable input[type="text"]').forEach(inp=>{
+    inp.addEventListener('input', saveState);
+  });
+
+  // restore draft if present
+  const draft = localStorage.getItem("tkb_autosave");
+  if (draft && confirm("Bạn có muốn khôi phục dữ liệu chưa lưu không?")){
+    try {
+      const arr = JSON.parse(draft);
+      putData(arr);
+      markSaved("Đã khôi phục dữ liệu tạm!");
+    } catch(_) {}
+  }
+}
+
+$('#btnUndo')?.addEventListener('click', ()=>{
+  if (undoStack.length > 1){
+    const current = undoStack.pop();
+    redoStack.push(current);
+    const prev = JSON.parse(undoStack[undoStack.length-1]);
+    putData(prev);
+    markSaved("Hoàn tác thành công");
+    renderAllReports();
+  }
+});
+
+$('#btnRedo')?.addEventListener('click', ()=>{
+  if (redoStack.length){
+    const next = JSON.parse(redoStack.pop());
+    undoStack.push(JSON.stringify(next));
+    putData(next);
+    markSaved("Đã redo");
+    renderAllReports();
+  }
+});
+
+/* ========= Reports: Duplicate GV / Min periods / Consecutive ========= */
+
+function getHeadersAndOffsets(){
+  // colOffset = 2 (Thứ, Tiết)
+  const colOffset = parseInt($('#tkbTable')?.dataset?.colOffset || '2', 10);
+  const headRows = $$('#tkbTable thead tr');
+  if (headRows.length < 2) return { colOffset, classLabels: [], gvCols: [], monCols: [] };
+
+  // Lấy nhãn lớp từ hàng 1 (row 0) có colspan=2
+  const classLabels = [];
+  $$('th', headRows[0]).forEach((th, idx)=>{
+    if (idx >= colOffset && (th.colSpan === 2)) classLabels.push((th.textContent||'').trim());
+  });
+
+  // Ở hàng 2: xác định cột Môn/GV theo text
+  const monCols = [], gvCols = [];
+  const ths2 = $$('th', headRows[1]);
+  ths2.forEach((th, i)=>{
+    const txt = (th.textContent||'').toLowerCase();
+    const absIdx = colOffset + i;
+    if (txt.includes('gv')) gvCols.push(absIdx);
+    else monCols.push(absIdx);
+  });
+
+  return { colOffset, classLabels, gvCols, monCols };
+}
+
+function renderDuplicateTable(){
+  const table = $('#tkbTable');
+  const tbody = table?.tBodies?.[0];
+  if (!tbody) return;
+
+  const { gvCols } = getHeadersAndOffsets();
+  const results = [];
+
+  // clear old highlight
+  $$('input', tbody).forEach(inp=>{
+    inp.classList.remove('dup-cell');
+    inp.parentElement?.classList.remove('dup-cell');
+  });
+
+  Array.from(tbody.rows).forEach((tr)=>{
+    const thu = tr.cells[0]?.querySelector('input')?.value || tr.cells[0]?.innerText.trim();
+    const tiet = tr.cells[1]?.querySelector('input')?.value || tr.cells[1]?.innerText.trim();
+
+    const seen = {};
+    gvCols.forEach(col=>{
+      const inp = tr.cells[col]?.querySelector('input');
+      const val = (inp?.value||'').trim();
+      if (!val) return;
+      (seen[val] ||= []).push(inp);
     });
 
-    // Zoom real-time
-    function updateZoom(delta) {
-        let slider = document.getElementById('zoom_range');
-        let val = parseFloat(slider.value) + delta;
-        val = Math.max(0.3, Math.min(2, val));
-        slider.value = val.toFixed(2);
-        updateZoomValue(val);
-    }
-    function updateZoomValue(val) {
-        val = parseFloat(val);
-        document.getElementById('zoom_percent').innerText = Math.round(val * 100);
-        document.getElementById('zoom').value = val;
-        let zoomBox = document.querySelector('.zoom-box');
-        if (zoomBox) zoomBox.style.transform = `scale(${val})`;
-    }
-
-    // Undo/Redo stack + autosave (bán lưu)
-    let undoStack = [];
-    let redoStack = [];
-    let autosaveStatus = document.getElementById("autosave-status");
-
-    function getCurrentData() {
-        let data = [];
-        document.querySelectorAll('.big-table tbody tr').forEach(tr => {
-            let row = [];
-            tr.querySelectorAll('input[type="text"]').forEach(input => {
-                row.push(input.value);
-            });
-            data.push(row);
+    Object.entries(seen).forEach(([gv, arr])=>{
+      if (arr.length > 1){
+        arr.forEach(inp=>{
+          inp.classList.add('dup-cell');
+          inp.parentElement?.classList.add('dup-cell');
         });
-        return data;
+        results.push({ gv, thu, tiet, so_lan_trung: arr.length });
+      }
+    });
+  });
+
+  const el = $('#duplicateTableContainer');
+  if (!el) return;
+  el.innerHTML = results.length
+    ? `<table class="table table-bordered mb-3">
+         <thead class="table-danger">
+           <tr><th>Giáo viên</th><th>Thứ</th><th>Tiết</th><th>Số lần trùng</th></tr>
+         </thead>
+         <tbody>
+           ${results.map(r=>`
+             <tr class="table-danger">
+               <td>${r.gv}</td><td>${r.thu}</td><td>${r.tiet}</td><td>${r.so_lan_trung}</td>
+             </tr>`).join('')}
+         </tbody>
+       </table>`
+    : `<div class="alert alert-success mb-3">Không có giáo viên nào bị trùng tiết!</div>`;
+}
+
+function renderMinPeriodPerDayTable(minPeriods){
+  const table = $('#tkbTable');
+  const tbody = table?.tBodies?.[0];
+  if (!tbody) return;
+
+  const { colOffset, classLabels, monCols } = getHeadersAndOffsets();
+  const dayTiet = {}; // label -> thu -> [tiet]
+
+  Array.from(tbody.rows).forEach((tr)=>{
+    const thu  = tr.cells[0]?.querySelector('input')?.value || tr.cells[0]?.innerText.trim();
+    const tiet = parseInt(tr.cells[1]?.querySelector('input')?.value || tr.cells[1]?.innerText.trim(), 10);
+
+    monCols.forEach((absIdx, i)=>{
+      const label = classLabels[i];
+      const val   = tr.cells[absIdx]?.querySelector('input')?.value || "";
+      if (label && val.trim()){
+        (dayTiet[label] ||= {});
+        (dayTiet[label][thu] ||= []).push(tiet);
+      }
+    });
+  });
+
+  const rows = [];
+  for (const label of classLabels){
+    const days = dayTiet[label] || {};
+    for (const thu in days){
+      const arr = (days[thu]||[]).slice().sort((a,b)=>a-b);
+      if (arr.length < minPeriods){
+        rows.push({ label, thu, count: arr.length, req: minPeriods, periods: arr.join(', ') });
+      }
     }
+  }
 
-    // Kiểm tra và highlight ô trùng giáo viên + render bảng trùng
-    function renderDuplicateTable() {
-        let table = document.querySelector('.big-table');
-        let tbody = table?.tBodies[0];
-        if (!tbody) return;
+  $('#minPeriodDayContainer').innerHTML = rows.length
+    ? `<table class="table table-bordered mb-3">
+         <thead class="table-warning">
+          <tr><th>Lớp</th><th>Thứ</th><th>Số tiết thực tế</th><th>Yêu cầu tối thiểu</th><th>Các tiết</th></tr>
+         </thead>
+         <tbody>
+           ${rows.map(r=>`
+             <tr class="table-warning">
+               <td>${r.label}</td><td>${r.thu}</td><td>${r.count}</td><td>${r.req}</td><td>${r.periods}</td>
+             </tr>`).join('')}
+         </tbody>
+       </table>`
+    : `<div class="alert alert-success mb-3">Tất cả các lớp đều có số tiết tối thiểu hợp lệ trong mỗi ngày!</div>`;
+}
 
-        // Xác định cột GV dạy
-        let gvIndices = [];
-        let headerRows = table.tHead ? table.tHead.rows : table.querySelectorAll('thead tr');
-        if (headerRows.length > 1) {
-            let colOffset = 2;
-            let n = headerRows[1].querySelectorAll('th').length;
-            for (let i = 0; i < n; i++) {
-                if (headerRows[1].querySelectorAll('th')[i].textContent.trim().toLowerCase().includes('gv')) {
-                    gvIndices.push(i + colOffset);
-                }
-            }
-        }
+function renderConsecutivePeriodsTable(){
+  const table = $('#tkbTable');
+  const tbody = table?.tBodies?.[0];
+  if (!tbody) return;
 
-        let results = [];
-        // Xóa hết highlight cũ
-        tbody.querySelectorAll('input').forEach(inp => {
-            inp.classList.remove('dup-cell');
-            if (inp.parentElement) inp.parentElement.classList.remove('dup-cell');
-        });
+  const { classLabels, monCols } = getHeadersAndOffsets();
+  const dayTiet = {}; // label -> thu -> [tiet]
 
-        Array.from(tbody.rows).forEach((row, row_idx) => {
-            let thu = row.cells[0]?.querySelector('input')?.value || row.cells[0]?.innerText.trim();
-            let tiet = row.cells[1]?.querySelector('input')?.value || row.cells[1]?.innerText.trim();
-            let teachers = [];
-            gvIndices.forEach(idx => {
-                let inp = row.cells[idx]?.querySelector('input');
-                let gv = inp ? inp.value.trim() : "";
-                if (gv) teachers.push({gv, cell: inp});
-            });
-            let seen = {};
-            teachers.forEach(obj => {
-                if (!seen[obj.gv]) seen[obj.gv] = [];
-                seen[obj.gv].push(obj.cell);
-            });
-            Object.entries(seen).forEach(([gv, arr]) => {
-                if (arr.length > 1) {
-                    arr.forEach(cell => {
-                        cell.classList.add('dup-cell');
-                        if (cell.parentElement) cell.parentElement.classList.add('dup-cell');
-                    });
-                    results.push({
-                        gv, thu, tiet, so_lan_trung: arr.length
-                    });
-                }
-            });
-        });
-        // Render bảng vi phạm
-        let html = "";
-        if (results.length) {
-            html += `<table class="table table-bordered mb-3"><thead class="table-danger">
-                <tr>
-                    <th>Giáo viên</th>
-                    <th>Thứ</th>
-                    <th>Tiết</th>
-                    <th>Số lần trùng</th>
-                </tr></thead><tbody>`;
-            results.forEach(row => {
-                html += `<tr class="table-danger">
-                    <td>${row.gv}</td>
-                    <td>${row.thu}</td>
-                    <td>${row.tiet}</td>
-                    <td>${row.so_lan_trung}</td>
-                </tr>`;
-            });
-            html += `</tbody></table>`;
-        } else {
-            html = `<div class="alert alert-success mb-3">Không có giáo viên nào bị trùng tiết!</div>`;
-        }
-        document.getElementById('duplicateTableContainer').innerHTML = html;
+  Array.from(tbody.rows).forEach((tr)=>{
+    const thu  = tr.cells[0]?.querySelector('input')?.value || tr.cells[0]?.innerText.trim();
+    const tiet = parseInt(tr.cells[1]?.querySelector('input')?.value || tr.cells[1]?.innerText.trim(), 10);
+
+    monCols.forEach((absIdx, i)=>{
+      const label = classLabels[i];
+      const val   = tr.cells[absIdx]?.querySelector('input')?.value || "";
+      if (label && val.trim()){
+        (dayTiet[label] ||= {});
+        (dayTiet[label][thu] ||= []).push(tiet);
+      }
+    });
+  });
+
+  const rows = [];
+  for (const label of classLabels){
+    const days = dayTiet[label] || {};
+    for (const thu in days){
+      const arr = (days[thu]||[]).slice().sort((a,b)=>a-b);
+      if (arr.length <= 1) continue;
+      let consecutive = true;
+      for (let i=1;i<arr.length;i++){
+        if (arr[i] - arr[i-1] !== 1){ consecutive = false; break; }
+      }
+      if (!consecutive){
+        rows.push({ label, thu, periods: arr.join(', '), note: 'Các tiết không liền nhau (xé lẻ)!' });
+      }
     }
+  }
 
-    // Kiểm tra số tiết tối thiểu mỗi ngày/lớp, kể cả chỉ có 1 tiết cũng báo lỗi
-    function renderMinPeriodPerDayTable(minPeriods) {
-        let classLabels = [];
-        document.querySelectorAll('.big-table thead tr:nth-child(1) th').forEach((th, idx) => {
-            if (idx >= 2 && th.colSpan === 2) {
-                classLabels.push(th.textContent.trim());
-            }
-        });
+  $('#consecutivePeriodsContainer').innerHTML = rows.length
+    ? `<table class="table table-bordered mb-3">
+         <thead class="table-warning">
+          <tr><th>Lớp</th><th>Thứ</th><th>Các tiết</th><th>Thông báo</th></tr>
+         </thead>
+         <tbody>
+           ${rows.map(r=>`
+             <tr class="table-warning">
+               <td>${r.label}</td><td>${r.thu}</td><td>${r.periods}</td><td>${r.note}</td>
+             </tr>`).join('')}
+         </tbody>
+       </table>`
+    : `<div class="alert alert-success mb-3">Không có lớp nào bị xé lẻ tiết trong ngày!</div>`;
+}
 
-        let monIndices = [];
-        for (let i = 0; i < classLabels.length; i++) {
-            monIndices.push(2 + i * 2);
-        }
+function renderAllReports(){
+  renderDuplicateTable();
+  const minPeriods = parseInt($('#min_period_input')?.value || '2', 10) || 2;
+  renderMinPeriodPerDayTable(minPeriods);
+  renderConsecutivePeriodsTable();
+}
 
-        let result = [];
-        let table = document.querySelector('.big-table');
-        let tbody = table?.tBodies[0];
-        if (!tbody) return;
-        let dayTiet = {};
-        Array.from(tbody.rows).forEach((tr) => {
-            let thu = tr.cells[0]?.querySelector('input')?.value || tr.cells[0]?.innerText.trim();
-            let tiet = tr.cells[1]?.querySelector('input')?.value || tr.cells[1]?.innerText.trim();
-            monIndices.forEach((monColIdx, idx) => {
-                let mon = tr.cells[monColIdx]?.querySelector('input')?.value || "";
-                let label = classLabels[idx];
-                if (mon && mon.trim()) {
-                    dayTiet[label] = dayTiet[label] || {};
-                    dayTiet[label][thu] = dayTiet[label][thu] || [];
-                    dayTiet[label][thu].push(parseInt(tiet));
-                }
-            });
-        });
-        for (let label of classLabels) {
-            if (!dayTiet[label]) continue;
-            for (let thu in dayTiet[label]) {
-                let tietArr = dayTiet[label][thu].slice().sort((a, b) => a - b);
-                // < minPeriods là lỗi
-                if (tietArr.length < minPeriods) {
-                    result.push({
-                        "Lớp": label,
-                        "Thứ": thu,
-                        "Số tiết": tietArr.length,
-                        "Yêu cầu tối thiểu": minPeriods,
-                        "Các tiết": tietArr.join(', ')
-                    });
-                }
-            }
-        }
-        let html = "";
-        if (result.length) {
-            html += `<table class="table table-bordered mb-3"><thead class="table-warning">
-                <tr>
-                    <th>Lớp</th>
-                    <th>Thứ</th>
-                    <th>Số tiết thực tế</th>
-                    <th>Yêu cầu tối thiểu</th>
-                    <th>Các tiết</th>
-                </tr></thead><tbody>`;
-            result.forEach(row => {
-                html += `<tr class="table-warning">
-                    <td>${row["Lớp"]}</td>
-                    <td>${row["Thứ"]}</td>
-                    <td>${row["Số tiết"]}</td>
-                    <td>${row["Yêu cầu tối thiểu"]}</td>
-                    <td>${row["Các tiết"]}</td>
-                </tr>`;
-            });
-            html += `</tbody></table>`;
-        } else {
-            html = `<div class="alert alert-success mb-3">Tất cả các lớp đều có số tiết tối thiểu hợp lệ trong mỗi ngày!</div>`;
-        }
-        document.getElementById('minPeriodDayContainer').innerHTML = html;
-    }
-
-    // --- KIỂM TRA TIẾT KHÔNG LIỀN (xé lẻ) ---
-    function renderConsecutivePeriodsTable() {
-        // Lấy các lớp và vị trí cột môn
-        let classLabels = [];
-        document.querySelectorAll('.big-table thead tr:nth-child(1) th').forEach((th, idx) => {
-            if (idx >= 2 && th.colSpan === 2) classLabels.push(th.textContent.trim());
-        });
-        let monIndices = [];
-        for (let i = 0; i < classLabels.length; i++) monIndices.push(2 + i * 2);
-
-        // Gom tiết mỗi ngày cho từng lớp
-        let table = document.querySelector('.big-table');
-        let tbody = table?.tBodies[0];
-        if (!tbody) return;
-        let dayTiet = {};
-        Array.from(tbody.rows).forEach((tr) => {
-            let thu = tr.cells[0]?.querySelector('input')?.value || tr.cells[0]?.innerText.trim();
-            let tiet = tr.cells[1]?.querySelector('input')?.value || tr.cells[1]?.innerText.trim();
-            monIndices.forEach((monColIdx, idx) => {
-                let mon = tr.cells[monColIdx]?.querySelector('input')?.value || "";
-                let label = classLabels[idx];
-                if (mon && mon.trim()) {
-                    dayTiet[label] = dayTiet[label] || {};
-                    dayTiet[label][thu] = dayTiet[label][thu] || [];
-                    dayTiet[label][thu].push(parseInt(tiet));
-                }
-            });
-        });
-
-        // Kiểm tra xé lẻ tiết (phải liền kề, ví dụ: 2,3,4 là ok; 1,3 là xé lẻ)
-        let result = [];
-        for (let label of classLabels) {
-            if (!dayTiet[label]) continue;
-            for (let thu in dayTiet[label]) {
-                let tietArr = dayTiet[label][thu].slice().sort((a, b) => a - b);
-                if (tietArr.length <= 1) continue; // 1 tiết hoặc 0 tiết thì thôi, chỉ xét xé lẻ với >=2 tiết
-                let isConsecutive = true;
-                for (let i = 1; i < tietArr.length; i++) {
-                    if (tietArr[i] - tietArr[i - 1] !== 1) {
-                        isConsecutive = false;
-                        break;
-                    }
-                }
-                if (!isConsecutive) {
-                    result.push({
-                        "Lớp": label,
-                        "Thứ": thu,
-                        "Các tiết": tietArr.join(', '),
-                        "Thông báo": "Các tiết không liền nhau (xé lẻ)!"
-                    });
-                }
-            }
-        }
-        // Render ra bảng cảnh báo
-        let html = "";
-        if (result.length) {
-            html += `<table class="table table-bordered mb-3"><thead class="table-warning">
-                <tr>
-                    <th>Lớp</th>
-                    <th>Thứ</th>
-                    <th>Các tiết</th>
-                    <th>Thông báo</th>
-                </tr></thead><tbody>`;
-            result.forEach(row => {
-                html += `<tr class="table-warning">
-                    <td>${row["Lớp"]}</td>
-                    <td>${row["Thứ"]}</td>
-                    <td>${row["Các tiết"]}</td>
-                    <td>${row["Thông báo"]}</td>
-                </tr>`;
-            });
-            html += `</tbody></table>`;
-        } else {
-            html = `<div class="alert alert-success mb-3">Không có lớp nào bị xé lẻ tiết trong ngày!</div>`;
-        }
-        document.getElementById('consecutivePeriodsContainer').innerHTML = html;
-    }
-
-    // --- Các hàm lưu trạng thái, autosave, undo, redo ---
-    function saveState() {
-        let data = getCurrentData();
-        undoStack.push(JSON.stringify(data));
-        if (undoStack.length > 50) undoStack.shift();
-        redoStack = [];
-        localStorage.setItem("tkb_autosave", JSON.stringify(data));
-        if (autosaveStatus) autosaveStatus.innerText = "Đã lưu tạm";
-        renderDuplicateTable();
-        let minPeriods = parseInt(document.getElementById('min_period_input').value) || 2;
-        renderMinPeriodPerDayTable(minPeriods);
-        renderConsecutivePeriodsTable();
-    }
-
-    document.getElementById('min_period_input').addEventListener('input', function() {
-        renderMinPeriodPerDayTable(parseInt(this.value) || 2);
-    });  
-
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.big-table input[type="text"]').forEach(input => {
-            input.addEventListener('input', saveState);
-        });
-        let autosave = localStorage.getItem("tkb_autosave");
-        if (autosave) {
-            if (confirm("Bạn có muốn khôi phục dữ liệu chưa lưu không?")) {
-                let arr = JSON.parse(autosave);
-                document.querySelectorAll('.big-table tbody tr').forEach((tr, i) => {
-                    tr.querySelectorAll('input[type="text"]').forEach((input, j) => {        
-                        if (arr[i] && arr[i][j]) input.value = arr[i][j];
-                    });
-                });
-                if (autosaveStatus) autosaveStatus.innerText = "Đã khôi phục dữ liệu tạm!";
-                renderDuplicateTable();
-            }
-        }
-    });    
-
-    function undoChange() {
-        if (undoStack.length > 1) {
-            let current = undoStack.pop();
-            redoStack.push(current);
-            let prev = JSON.parse(undoStack[undoStack.length - 1]);
-            document.querySelectorAll('.big-table tbody tr').forEach((tr, i) => {
-                tr.querySelectorAll('input[type="text"]').forEach((input, j) => {
-                    input.value = prev[i][j];
-                });
-            });
-            if (autosaveStatus) autosaveStatus.innerText = "Hoàn tác thành công";
-            renderDuplicateTable();
-        }
-    }
-    function redoChange() {
-        if (redoStack.length > 0) {
-            let next = JSON.parse(redoStack.pop());
-            undoStack.push(JSON.stringify(next));
-            document.querySelectorAll('.big-table tbody tr').forEach((tr, i) => {
-                tr.querySelectorAll('input[type="text"]').forEach((input, j) => {
-                    input.value = next[i][j];
-                });
-            });
-            if (autosaveStatus) autosaveStatus.innerText = "Đã redo";
-            renderDuplicateTable();
-        }
-    }
-
-    // Gọi render khi tải trang lần đầu
-    window.onload = function(){
-        let slider = document.getElementById('zoom_range');
-        if (slider) updateZoomValue(slider.value);
-        renderDuplicateTable();
-        let minPeriods = parseInt(document.getElementById('min_period_input').value) || 2;
-        renderMinPeriodPerDayTable(minPeriods);
-        renderConsecutivePeriodsTable();
-    };
+/* ========= Init on load ========= */
+window.addEventListener('DOMContentLoaded', ()=>{
+  // Zoom init is already handled; set initial outputs
+  {% if headers %}
+    initAutosave();
+    renderAllReports();
+    // live update when min_period changes
+    $('#min_period_input')?.addEventListener('input', debounce(()=>{
+      const v = parseInt($('#min_period_input').value || '2', 10) || 2;
+      renderMinPeriodPerDayTable(v);
+    }, 120));
+  {% endif %}
+});
 </script>
-</body>
-</html>
+{% endblock %}

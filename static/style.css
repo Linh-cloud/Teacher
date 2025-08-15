@@ -1,189 +1,411 @@
+/* ================================
+   Global tokens & resets
+==================================*/
+:root {
+  /* Color palette */
+  --bg: #f7f7f9;
+  --surface: #ffffff;
+  --text: #1f2328;
+  --muted: #6b7280;
+  --brand: #ed232c;
+  --brand-weak: #ffe6e7;
+  --border: #d0d7de;
+  --border-soft: #e5e7eb;
+  --shadow: 0 2px 8px rgba(0,0,0,.06);
+  --shadow-soft: 0 2px 8px #eee;
+
+  /* Table */
+  --th-bg: #f3f6fa;
+  --row-hover: #f6f8fa;
+  --dup-bg: #fff862;
+  --dup-outline: #228b22;
+
+  /* Sizing & radius */
+  --radius: 8px;
+  --radius-sm: 6px;
+  --radius-lg: 12px;
+
+  /* Typography */
+  --fs-base: clamp(14px, 1.4vw, 15px);
+  --fs-sm: 13px;
+  --fs-md: 15px;
+  --fs-lg: 17px;
+
+  /* Transitions */
+  --t-fast: 120ms;
+  --t-slow: 200ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0d10;
+    --surface: #12161a;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --brand-weak: #2a0e10;
+    --border: #29323a;
+    --border-soft: #1e242b;
+    --shadow: 0 2px 10px rgba(0,0,0,.35);
+    --shadow-soft: 0 2px 10px rgba(0,0,0,.25);
+    --th-bg: #11161b;
+    --row-hover: #151b21;
+    --dup-bg: #dbc900;
+    --dup-outline: #89d58a;
+  }
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+}
+
 body {
-    background: #f7f7f9;
-    margin: 0;
-    padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* =========== Table & Scroll =========== */
+/* Reduce motion if user prefers */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ================================
+   Sidebar ràng buộc
+==================================*/
 .constraint-sidebar {
-    width: 260px;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px #ddd;
-    padding: 10px 14px 14px 14px;
-    font-size: 15px;
-    margin-right: 24px;
-    float: left;
+  width: 260px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px 14px 14px 14px;
+  font-size: var(--fs-md);
+  margin-right: 24px;
+  float: left;
+  border: 1px solid var(--border-soft);
 }
+
 .constraint-title {
-    font-weight: bold;
-    color: #ed232c;
-    font-size: 17px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #f3f3f3;
-    margin-bottom: 8px;
+  font-weight: 700;
+  color: var(--brand);
+  font-size: var(--fs-lg);
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--border-soft);
+  margin-bottom: 8px;
 }
+
 .constraint-list {
-    list-style: none;
-    margin: 0; padding: 0;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
+
 .constraint-list li {
-    margin: 6px 0;
-    padding: 2px 0;
+  margin: 6px 0;
+  padding: 2px 0;
 }
+
 .constraint-list label {
-    cursor: pointer;
-    font-weight: 500;
-    color: #222;
-}
-.constraint-list input[type=checkbox] {
-    accent-color: #ed232c;
-    margin-right: 5px;
-    transform: scale(1.13);
-}
-.table-container, .excel-scroll-x {
-    overflow-x: auto;
-    overflow-y: auto;
-    width: 100%;
-    max-width: 1800px;
-    max-height: 600px; /* Chỉnh lại nếu muốn */
-    margin: 0 auto;
-    background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px #eee;
-    padding: 8px 0;
-    border-bottom: 1px solid #ccc;
-}
-.excel-scroll-x::-webkit-scrollbar {
-    height: 7px !important;
-}
-.excel-scroll-x::-webkit-scrollbar-thumb {
-    background: #b1b1b1;
-    border-radius: 3px;
-}
-.excel-scroll-x::-webkit-scrollbar-track {
-    background: #f4f4f4;
-    border-radius: 3px;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* =========== Table =========== */
+.constraint-list input[type="checkbox"] {
+  accent-color: var(--brand);
+  transform: scale(1.08);
+}
+
+/* ================================
+   Scroll containers
+==================================*/
+.table-container,
+.excel-scroll-x {
+  overflow: auto;
+  width: 100%;
+  max-width: 1800px;
+  max-height: 600px; /* chỉnh nếu cần */
+  margin: 0 auto;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  padding: 8px 0;
+  border: 1px solid var(--border-soft);
+}
+
+/* Scrollbar: WebKit */
+.excel-scroll-x::-webkit-scrollbar,
+.table-container::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.excel-scroll-x::-webkit-scrollbar-thumb,
+.table-container::-webkit-scrollbar-thumb {
+  background: #b1b1b1;
+  border-radius: 4px;
+}
+.excel-scroll-x::-webkit-scrollbar-track,
+.table-container::-webkit-scrollbar-track {
+  background: #ececec;
+  border-radius: 4px;
+}
+
+/* Scrollbar: Firefox */
+.excel-scroll-x,
+.table-container {
+  scrollbar-width: thin;
+  scrollbar-color: #b1b1b1 #ececec;
+}
+
+/* ================================
+   Big table
+==================================*/
 .big-table {
-    border-collapse: collapse;
-    table-layout: fixed;
-    width: max-content;
-    min-width: 1200px;   /* Đủ rộng để không bị bóp */
-    font-size: 15px;
-    background: #fff;
+  border-collapse: separate;             /* separate + border-spacing = highlight mềm */
+  border-spacing: 0;
+  table-layout: fixed;
+  width: max-content;
+  min-width: 1200px;                     /* đủ rộng để không bị bóp */
+  font-size: var(--fs-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
-.big-table th, .big-table td {
-    border: 1px solid #d0d7de;
-    text-align: center;
-    vertical-align: middle;
-    padding: 2px 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    box-sizing: border-box;
+.big-table th,
+.big-table td {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  vertical-align: middle;
+  padding: 6px 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
+
+/* Remove right/bottom border on last cells for a cleaner radius */
+.big-table tr th:last-child,
+.big-table tr td:last-child { border-right: none; }
+.big-table tr:last-child td { border-bottom: none; }
 
 .big-table th {
-    background: #f3f6fa;
-    font-weight: bold;
+  position: sticky;        /* sticky header */
+  top: 0;
+  z-index: 2;
+  background: var(--th-bg);
+  font-weight: 700;
+  color: var(--text);
 }
 
-.big-table th.header-small         { width: 60px; min-width: 60px; }
-.big-table th.header-tiet          { width: 45px; min-width: 45px; }
-.big-table th.header-class         { width: 120px; min-width: 120px; }
+/* Optional: zebra rows for readability */
+.big-table tr:nth-child(even) td {
+  /* comment/uncomment to toggle zebra stripes */
+  /* background: color-mix(in srgb, var(--th-bg) 35%, var(--surface)); */
+}
+
+/* Width presets */
+.big-table th.header-small   { width: 68px; min-width: 60px; }
+.big-table th.header-tiet    { width: 54px; min-width: 45px; }
+.big-table th.header-class   { width: 140px; min-width: 120px; }
 .big-table th.header-mon,
-.big-table th.header-gv            { width: 60px; min-width: 60px; }
+.big-table th.header-gv      { width: 80px; min-width: 60px; }
 
-/* =========== Input =========== */
+/* Hover states */
+.big-table td:hover { background: var(--row-hover); }
+
+/* ================================
+   Inputs
+==================================*/
 .big-input {
-    width: 98%;
-    min-width: 40px;
-    max-width: 110px;
-    height: 32px;
-    background: transparent;
-    border: none;
-    outline: none;
-    padding: 0 2px;
-    text-align: center;
-    font-size: inherit;
-    font-weight: 500;
-    transition: background 0.08s, box-shadow 0.08s, border 0.08s;
+  width: 98%;
+  min-width: 40px;
+  max-width: 120px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  outline: none;
+  padding: 0 2px;
+  text-align: center;
+  font-size: inherit;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: border var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
 }
 
-.big-input:focus {
-    outline: none;
-    border: none;
-    background: #fff;
-    box-shadow: none;
-    font-weight: bold;
+/* Focus visible for accessibility */
+.big-input:focus-visible {
+  background: var(--surface);
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px var(--brand-weak);
+  font-weight: 700;
 }
 
-.big-table td:hover, .big-input:hover {
-    background: #f6f8fa;
+/* Hover */
+.big-input:hover {
+  background: var(--row-hover);
 }
+
+/* Validation error style (bg-danger container) */
 .bg-danger .big-input {
-    background: #e94545 !important;
-    color: #fff !important;
+  background: #e94545;
+  color: #fff;
 }
 
-/* =========== Highlight trùng =========== */
+/* ================================
+   Duplicate cell highlight
+==================================*/
 .dup-cell {
-    background: #fff862 !important;
-    border: 2.5px solid #228B22 !important;
-    color: #222 !important;
-    font-weight: bold;
-    border-radius: 3px;
-    position: relative;
-    z-index: 3;
+  background: var(--dup-bg);
+  color: #222;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+  /* Dùng outline thay vì border để tránh làm lệch layout ô */
+  outline: 2.5px solid var(--dup-outline);
+  outline-offset: -2px;
+  border-radius: 3px;
 }
 
-/* =========== Zoom Box =========== */
+/* ================================
+   Zooming
+==================================*/
 .zoom-box {
-    display: inline-block;
-    transform-origin: top left;
+  display: inline-block;
+  transform-origin: top left;
 }
 
-/* =========== Zoom slider group =========== */
 .zoom-slider-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: var(--fs-sm);
+  color: var(--muted);
 }
 
 .zoom-range {
-    width: 120px;
-    accent-color: #888;
-    height: 4px;
-    margin: 0 4px;
-    vertical-align: middle;
+  width: 140px;
+  accent-color: #888;
+  height: 4px;
+  margin: 0 4px;
+  vertical-align: middle;
 }
 
 .zoom-btn {
-    border: 1px solid #aaa;
-    background: #f7f7f7;
-    color: #333;
-    font-size: 20px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0;
-    transition: background 0.18s, border 0.18s;
+  border: 1px solid #b6b6b6;
+  background: #f7f7f7;
+  color: #333;
+  font-size: 18px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--t-slow), border var(--t-slow), transform var(--t-fast);
+  user-select: none;
 }
 .zoom-btn:hover {
-    background: #e1e1e1;
-    border-color: #333;
+  background: #e9e9e9;
+  border-color: #333;
 }
-/* =========== Responsive =========== */
+.zoom-btn:active {
+  transform: scale(.96);
+}
+
+/* ================================
+   Flash messages (optional)
+   - Nếu bạn dùng Flask flash, có thể gắn các class sau:
+     .alert, .alert-success, .alert-warning, .alert-danger
+==================================*/
+.alert {
+  position: relative;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: var(--fs-sm);
+}
+.alert + .alert { margin-top: 8px; }
+
+.alert-success {
+  border-color: #c6f6d5;
+  background: #f0fff4;
+  color: #166534;
+}
+.alert-warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+.alert-danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .alert { background: var(--surface); border-color: var(--border); color: var(--text); }
+  .alert-success { background: #0f2217; border-color: #244834; color: #8affb7; }
+  .alert-warning { background: #241d0c; border-color: #4d3c1a; color: #ffd479; }
+  .alert-danger  { background: #2a1212; border-color: #4e1c1c; color: #ff9b9b; }
+}
+
+/* ================================
+   Responsive tweaks
+==================================*/
+@media (max-width: 1200px) {
+  .big-table { min-width: 1000px; }
+}
+
 @media (max-width: 900px) {
-    .big-table { min-width: 900px; }
-    .big-input { width: 70px; min-width: 60px; }
+  .constraint-sidebar {
+    float: none;
+    width: 100%;
+    margin: 0 0 16px 0;
+  }
+  .big-table { min-width: 900px; }
+  .big-input { width: 80px; min-width: 60px; }
+}
+
+/* ================================
+   Print styles (tiện in TKB)
+==================================*/
+@media print {
+  body { background: #fff; }
+  .constraint-sidebar,
+  .zoom-slider-group,
+  .alert { display: none !important; }
+  .table-container,
+  .excel-scroll-x {
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+  .big-table {
+    width: 100% !important;
+    min-width: auto !important;
+    border: 1px solid #000;
+  }
+  .big-table th { position: static !important; }
 }

@@ -2,32 +2,193 @@
 {% block title %}Thống kê ngày nghỉ giáo viên{% endblock %}
 
 {% block content %}
-<div style="max-width:940px; margin:24px auto; background:#fff; padding:26px 12px 10px 12px; border-radius:10px; box-shadow:0 2px 16px #eaeaea;">
-    <h3>Thống kê ngày nghỉ của giáo viên</h3>
-    <table class="excel-table">
-        <thead>
+<div class="container-xl px-0">
+  <div class="card shadow-sm border-0" style="border-radius:12px;">
+    <div class="card-body">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h3 class="m-0">Thống kê ngày nghỉ của giáo viên</h3>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-outline-secondary btn-sm" id="btnPrint">In</button>
+          <button class="btn btn-outline-primary btn-sm" id="btnExportCsv">Xuất CSV</button>
+          <button class="btn btn-outline-success btn-sm" id="btnCopy">Sao chép</button>
+        </div>
+      </div>
+
+      <!-- Toolbar: search + sort + filter -->
+      <div class="row g-2 align-items-center mb-3">
+        <div class="col-12 col-md-6">
+          <input type="search" id="searchInput" class="form-control"
+                 placeholder="Tìm theo tên giáo viên hoặc ngày nghỉ…">
+        </div>
+        <div class="col-6 col-md-3">
+          <select id="sortSelect" class="form-select">
+            <option value="name_asc">Sắp xếp: Tên A → Z</option>
+            <option value="name_desc">Sắp xếp: Tên Z → A</option>
+            <option value="days_desc">Số ngày nghỉ ↓</option>
+            <option value="days_asc">Số ngày nghỉ ↑</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <select id="filterSelect" class="form-select">
+            <option value="all">Lọc: Tất cả</option>
+            <option value="none">Chỉ giáo viên không có ngày nghỉ</option>
+            <option value="has">Chỉ giáo viên có ngày nghỉ</option>
+          </select>
+        </div>
+      </div>
+
+      {% if teacher_off_schedule %}
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="offTable">
+          <thead class="table-light">
             <tr>
-                <th>Giáo viên</th>
-                <th>Ngày nghỉ</th>
+              <th style="min-width:240px;">Giáo viên</th>
+              <th>Ngày nghỉ</th>
+              <th class="text-end" style="width:120px;">Số ngày</th>
             </tr>
-        </thead>
-        <tbody>
+          </thead>
+          <tbody>
             {% for teacher, days_off in teacher_off_schedule.items() %}
-                <tr>
-                    <td style="font-weight:500;">{{ teacher }}</td>
-                    <td class="days-off">
-                        {% if days_off %}
-                            {{ days_off | join(', ') }}
-                        {% else %}
-                            <span style="color:#2b9642; font-weight:bold;">Không có ngày nghỉ</span>
-                        {% endif %}
-                    </td>
-                </tr>
+            <tr data-teacher="{{ teacher|e }}">
+              <td class="fw-semibold">{{ teacher }}</td>
+              <td class="days-off-cell">
+                {% if days_off %}
+                  {% for d in days_off %}
+                    <span class="badge rounded-pill text-bg-secondary me-1 mb-1">{{ d }}</span>
+                  {% endfor %}
+                {% else %}
+                  <span class="badge rounded-pill text-bg-success">Không có ngày nghỉ</span>
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <span class="badge text-bg-{% if days_off|length==0 %}success{% elif days_off|length<=1 %}info{% elif days_off|length<=2 %}warning{% else %}danger{% endif %}">
+                  {{ days_off|length }}
+                </span>
+              </td>
+            </tr>
             {% endfor %}
-        </tbody>
-    </table>
-    <div style="text-align:center;">
-        <a href="{{ url_for('tkb') }}" class="btn-back">Quay lại</a>
+          </tbody>
+          <tfoot>
+            <tr class="table-light">
+              <td colspan="3" class="small text-muted">
+                Tổng giáo viên: <strong id="statCount">{{ teacher_off_schedule|length }}</strong>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {% else %}
+        <div class="alert alert-info mb-0">
+          Chưa có dữ liệu để thống kê. Hãy tải TKB ở mục <a href="{{ url_for('tkb') }}">Xếp TKB</a>.
+        </div>
+      {% endif %}
+
+      <div class="text-center mt-3">
+        <a href="{{ url_for('tkb') }}" class="btn btn-outline-secondary">← Quay lại</a>
+      </div>
     </div>
+  </div>
 </div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+(function(){
+  const $ = (s, r=document)=>r.querySelector(s);
+  const $$ = (s, r=document)=>Array.from(r.querySelectorAll(s));
+
+  const table = $('#offTable');
+  if (!table) return;
+
+  const tbody = table.tBodies[0];
+  const rows = $$('tr', tbody).map(tr=>{
+    const name = tr.dataset.teacher || tr.cells[0].textContent.trim();
+    const days = $$('.days-off-cell .badge', tr).map(b=>b.textContent.trim())
+                 .filter(t=>t !== 'Không có ngày nghỉ');
+    return { tr, name, days, count: days.length, daysText: days.join(', ') };
+  });
+
+  const statCount = $('#statCount');
+  const searchInput = $('#searchInput');
+  const sortSelect = $('#sortSelect');
+  const filterSelect = $('#filterSelect');
+
+  function applyFilters(){
+    const q = (searchInput.value || '').toLowerCase().trim();
+    const mode = filterSelect.value;
+    let visible = 0;
+
+    rows.forEach(r=>{
+      let ok = true;
+      if (q){
+        ok = r.name.toLowerCase().includes(q) || r.daysText.toLowerCase().includes(q);
+      }
+      if (ok && mode === 'none') ok = (r.count === 0);
+      if (ok && mode === 'has')  ok = (r.count  > 0);
+      r.tr.style.display = ok ? '' : 'none';
+      if (ok) visible++;
+    });
+
+    if (statCount) statCount.textContent = visible;
+  }
+
+  function applySort(){
+    const v = sortSelect.value;
+    const cmp = {
+      name_asc:  (a,b)=> a.name.localeCompare(b.name, 'vi'),
+      name_desc: (a,b)=> b.name.localeCompare(a.name, 'vi'),
+      days_desc: (a,b)=> b.count - a.count || a.name.localeCompare(b.name,'vi'),
+      days_asc:  (a,b)=> a.count - b.count || a.name.localeCompare(b.name,'vi'),
+    }[v] || ((a,b)=> a.name.localeCompare(b.name,'vi'));
+
+    rows.sort(cmp).forEach(r=>tbody.appendChild(r.tr));
+  }
+
+  function exportCSV(){
+    const headers = ['Giáo viên','Ngày nghỉ','Số ngày'];
+    const lines = [headers.join(',')];
+    rows.forEach(r=>{
+      if (r.tr.style.display === 'none') return; // chỉ xuất các dòng đang hiển thị
+      const row = [
+        `"${r.name.replace(/"/g,'""')}"`,
+        `"${r.daysText.replace(/"/g,'""')}"`,
+        r.count
+      ].join(',');
+      lines.push(row);
+    });
+    const blob = new Blob([lines.join('\n')], {type: 'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'thong_ke_ngay_nghi_gv.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function copyToClipboard(){
+    let text = 'Giáo viên\tNgày nghỉ\tSố ngày\n';
+    rows.forEach(r=>{
+      if (r.tr.style.display === 'none') return;
+      text += `${r.name}\t${r.daysText}\t${r.count}\n`;
+    });
+    navigator.clipboard.writeText(text).then(()=>{
+      // dùng flash ở base.html nếu muốn; tạm hiển thị nhẹ
+      alert('Đã sao chép vào clipboard!');
+    });
+  }
+
+  // Events
+  searchInput?.addEventListener('input', ()=>{ applyFilters(); });
+  filterSelect?.addEventListener('change', ()=>{ applyFilters(); });
+  sortSelect?.addEventListener('change', ()=>{ applySort(); applyFilters(); });
+
+  $('#btnExportCsv')?.addEventListener('click', exportCSV);
+  $('#btnCopy')?.addEventListener('click', copyToClipboard);
+  $('#btnPrint')?.addEventListener('click', ()=> window.print());
+
+  // Init
+  applySort();
+  applyFilters();
+})();
+</script>
 {% endblock %}
