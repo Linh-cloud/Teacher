@@ -4,6 +4,8 @@ import os, json, uuid
 from werkzeug.utils import secure_filename
 from collections import defaultdict
 from jinja2 import TemplateNotFound
+import re
+from markupsafe import Markup
 
 # ================== CONFIG ==================
 
@@ -186,31 +188,42 @@ def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
 
     return teacher_off_schedule, weekdays
 
+def normalize_thu(value: str) -> Markup:
+    s = str(value or "").strip()
+
+    # Chuẩn hoá linebreak các kiểu
+    s = s.replace("\r\n", "\n").replace("\r", "\n")
+    s = s.replace("\\n", "\n")                  # literal "\n" -> newline
+
+    # Sửa lỗi gõ phổ biến "/n" -> "/\n"
+    s = re.sub(r"/\s*n(\s*\)|\b)", "/\n\\1", s)  # "/n(" -> "/\n(", "/n" -> "/\n"
+
+    # Bỏ ngoặc (Sáng)/(Chiều) nếu có, để hiển thị gọn
+    s = s.replace("(Sáng)", "Sáng").replace("(Chiều)", "Chiều")
+
+    # Tạo HTML với <br>
+    parts = [p.strip(" /") for p in s.split("\n") if p.strip()]
+    html = " /<br>".join(parts) if len(parts) > 1 else (parts[0] if parts else "")
+    return Markup(html)
+
 def build_rows_with_rowspan(tkb_data):
-    """
-    Gom các dòng liền nhau có cùng giá trị ở cột 'Thứ' và tạo rowspan cho ô 'Thứ'.
-    Trả về danh sách dòng: mỗi dòng gồm row_idx, thu, tiet, show_thu, rowspan, cells (từ cột 2 trở đi).
-    """
     rows = []
     if not tkb_data:
         return rows
-
     i = 0
     while i < len(tkb_data):
         thu_val = str(tkb_data[i][0])
         j = i
-        # gom nhóm liên tiếp cùng 'Thứ'
         while j < len(tkb_data) and str(tkb_data[j][0]) == thu_val:
             j += 1
-        span = j - i  # số dòng trong nhóm
-
-        # tạo dòng output
+        span = j - i
         for k in range(i, j):
             row = {
                 "row_idx": k,
-                "thu": tkb_data[k][0],
+                "thu_raw": tkb_data[k][0],                 # giữ giá trị thô cho JS
+                "thu_html": normalize_thu(tkb_data[k][0]), # giá trị đã chuẩn hoá cho hiển thị
                 "tiet": tkb_data[k][1],
-                "show_thu": (k == i),           # chỉ hiển thị ô 'Thứ' ở dòng đầu của nhóm
+                "show_thu": (k == i),
                 "rowspan": span if k == i else 0,
                 "cells": [{"col_idx": col, "value": tkb_data[k][col]}
                           for col in range(2, len(tkb_data[k]))]

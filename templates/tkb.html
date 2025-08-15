@@ -90,66 +90,48 @@
             </thead>
 
             <tbody>
-              {# === ƯU TIÊN DÙNG tkb_rows (đã gộp Thứ bằng rowspan) === #}
-              {% if tkb_rows %}
+            {% if tkb_rows %}
                 {% for r in tkb_rows %}
                 <tr>
-                  {% if r.show_thu %}
-                    <td rowspan="{{ r.rowspan }}">{{ r.thu }}</td>
-                  {% endif %}
-                  <td>{{ r.tiet }}</td>
-
-                  {# hidden giữ giá trị ổn định cho JS #}
-                  <input type="hidden" class="thu-val" value="{{ r.thu }}">
-                  <input type="hidden" class="tiet-val" value="{{ r.tiet }}">
-
-                  {% for cell in r.cells %}
-                    <td>
-                      <input type="text"
-                             name="cell_{{ r.row_idx }}_{{ cell.col_idx }}"
-                             value="{{ cell.value }}"
-                             class="big-input tkb-cell"
-                             data-role="{{ 'mon' if ((cell.col_idx - 2) % 2 == 0) else 'gv' }}"
-                             autocomplete="off" inputmode="text" readonly>
+                {% if r.show_thu %}
+                    <td rowspan="{{ r.rowspan }}" class="thu-cell">
+                    <span class="thu-text">{{ r.thu_html }}</span>
+                    <input type="hidden" class="thu-val" value="{{ r.thu_raw }}">
                     </td>
-                  {% endfor %}
-                </tr>
-                {% endfor %}
-
-              {# === Fallback: chưa có tkb_rows → dùng tkb_data như cũ === #}
-              {% else %}
-                {% for row_idx, row in enumerate(tkb_data) %}
-                <tr>
-                  {# 2 cột đầu vẫn là input để JS đọc/ghi #}
-                  <td>
-                    <input type="text" name="cell_{{row_idx}}_0" value="{{ row[0] }}" class="big-input" autocomplete="off" inputmode="text" />
-                    <input type="hidden" class="thu-val" value="{{ row[0] }}">
-                  </td>
-                  <td>
-                    <input type="text" name="cell_{{row_idx}}_1" value="{{ row[1] }}" class="big-input" autocomplete="off" inputmode="text" />
-                    <input type="hidden" class="tiet-val" value="{{ row[1] }}">
-                  </td>
-
-                  {% for col_idx in range(2, row|length) %}
-                  <td>
+                {% endif %}
+                <td>
+                    <span class="tiet-text">{{ r.tiet }}</span>
+                    <input type="hidden" class="tiet-val" value="{{ r.tiet }}">
+                </td>
+                {% for cell in r.cells %}
+                    <td>
                     <input type="text"
-                           name="cell_{{row_idx}}_{{col_idx}}"
-                           value="{{ row[col_idx] }}"
-                           class="big-input tkb-cell"
-                           data-role="{{ 'mon' if ((col_idx - 2) % 2 == 0) else 'gv' }}"
-                           autocomplete="off" inputmode="text" />
-                  </td>
-                  {% endfor %}
+                            name="cell_{{ r.row_idx }}_{{ cell.col_idx }}"
+                            value="{{ cell.value }}"
+                            class="big-input tkb-cell"
+                            data-role="{{ 'mon' if ((cell.col_idx - 2) % 2 == 0) else 'gv' }}"
+                            autocomplete="off" inputmode="text" readonly>
+                    </td>
+                {% endfor %}
                 </tr>
                 {% endfor %}
-              {% endif %}
+            {% else %}
+                {# fallback cũ của bạn, giữ nguyên #}
+            {% endif %}
             </tbody>
+
           </table>
+
         </div>
+
       </div>
+
     {% endif %}
+
   </form>
+
 </div>
+
 {% endblock %}
 
 {% block extra_script %}

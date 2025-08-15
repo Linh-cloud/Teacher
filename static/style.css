@@ -158,7 +158,7 @@ body {
   vertical-align: middle;
   padding: 6px 4px;
   overflow: hidden;
-  white-space: nowrap;
+  white-space: nowrap;             /* mặc định: không xuống dòng */
   text-overflow: ellipsis;
 }
 .big-table tr th:last-child,
@@ -195,6 +195,22 @@ body {
 
 /* Hover */
 .big-table td:hover { background: var(--row-hover); }
+
+/* ===== FIX HIỂN THỊ CỘT "THỨ" XUỐNG DÒNG GỌN GÀNG ===== */
+.big-table th:nth-child(1),
+.big-table td:nth-child(1) {
+  white-space: normal !important;   /* override nowrap để cho phép xuống dòng */
+  line-height: 1.35;
+  padding: 10px 6px;                /* thêm khoảng thở cho 2 dòng */
+  background: var(--surface);       /* tránh loang màu khi sticky */
+  border-left: 1px solid var(--border);
+}
+.thu-cell .thu-text {
+  display: inline-block;
+  white-space: pre-line;            /* hỗ trợ cả \n lẫn <br> */
+  text-align: center;
+}
+.thu-cell .thu-text br { line-height: 1.2; }
 
 /* ================================
    Inputs
@@ -268,7 +284,7 @@ body {
 .zoom-btn:active { transform: scale(.96); }
 
 /* ================================
-   Utility: buttons/badges used elsewhere
+   Utility: buttons/badges
 ==================================*/
 .btn-back {
   display: inline-block; padding: 8px 12px; border-radius: var(--radius);
