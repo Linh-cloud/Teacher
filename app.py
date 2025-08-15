@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, session, flash, redirect, url_for
+from flask import Flask, send_from_directory, Response, render_template, request, session, flash, redirect, url_for
 import pandas as pd
 import os, json, uuid
 from werkzeug.utils import secure_filename
 from collections import defaultdict
+from jinja2 import TemplateNotFound
 
 # ================== CONFIG ==================
 
@@ -187,7 +188,7 @@ def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
 
 # ================== ROUTES ==================
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 @app.route('/tkb', methods=['GET', 'POST'])
 def tkb():
     # Lấy zoom trước
@@ -359,22 +360,42 @@ def teacher_off():
                            weekdays=weekdays,
                            tab='tkb')
 
+@app.route('/favicon.ico')
+def favicon():
+    static_dir = os.path.join(app.root_path, 'static')
+    ico_path = os.path.join(static_dir, 'favicon.ico')
+    if os.path.exists(ico_path):
+        return send_from_directory(static_dir, 'favicon.ico', mimetype='image/x-icon')
+    # Fallback: trả SVG nhỏ làm favicon nếu không có file
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="12" fill="#ed232c"/>
+      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
+            font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#fff">TKB</text>
+    </svg>"""
+    return Response(svg, mimetype='image/svg+xml')
+
 # ================== OPTIONAL ERROR HANDLERS ==================
 
 @app.errorhandler(404)
 def page_not_found(e):
-    flash("Không tìm thấy trang yêu cầu.", "warning")
-    return render_template('error.html', code=404, error=e), 404
+    try:
+        flash("Không tìm thấy tài nguyên yêu cầu.", "warning")
+        return render_template('error.html', code=404, error=e), 404
+    except TemplateNotFound:
+        return "404 - Không tìm thấy.", 404
+
+@app.errorhandler(500)
+def internal_error(e):
+    try:
+        flash("Đã xảy ra lỗi hệ thống (500).", "danger")
+        return render_template('error.html', code=500, error=e), 500
+    except TemplateNotFound:
+        return "500 - Lỗi hệ thống.", 500
 
 @app.errorhandler(413)
 def file_too_large(e):
     flash("Tệp tải lên quá lớn. Giới hạn hiện tại là 8 MB.", "danger")
     return redirect(url_for('tkb'))
-
-@app.errorhandler(500)
-def internal_error(e):
-    flash("Đã xảy ra lỗi hệ thống (500). Vui lòng thử lại sau.", "danger")
-    return render_template('error.html', code=500, error=e), 500
 
 # ================== MAIN ==================
 

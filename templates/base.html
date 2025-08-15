@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Quản lý Thời khóa biểu{% endblock %}</title>
 
-  <!-- Favicons (tùy chọn) -->
-  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}"/>
+  <!-- Ưu tiên SVG (nhanh, sắc nét) -->
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('favicon') }}">
+  <!-- Nếu có file thật, trình duyệt sẽ dùng ICO này -->
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
 
   <!-- Bootstrap CSS -->
   <link

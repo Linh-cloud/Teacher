@@ -20,7 +20,7 @@
 
   <h2 class="text-center mb-3">Kiểm tra thời khóa biểu giáo viên</h2>
 
-  <form id="tkbForm" method="POST" enctype="multipart/form-data" class="mb-3">
+  <form id="tkbForm" action="{{ url_for('tkb') }}" method="POST" enctype="multipart/form-data" class="mb-3">
     <div class="row gy-2 align-items-center justify-content-center">
 
       <!-- Chọn file -->

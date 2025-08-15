@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Lỗi {{ code or 500 }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:920px;">
+  <div class="card border-0 shadow-sm" style="border-radius:12px;">
+    <div class="card-body">
+      <h3 class="mb-3">Đã xảy ra lỗi {{ code or 500 }}</h3>
+      <p class="text-muted">{{ (error.description if error and error.description) or error or "Yêu cầu không hợp lệ." }}</p>
+      <div class="mt-3">
+        <a class="btn btn-primary" href="{{ url_for('tkb') }}">← Về trang TKB</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
