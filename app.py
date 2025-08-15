@@ -186,6 +186,39 @@ def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
 
     return teacher_off_schedule, weekdays
 
+def build_rows_with_rowspan(tkb_data):
+    """
+    Gom các dòng liền nhau có cùng giá trị ở cột 'Thứ' và tạo rowspan cho ô 'Thứ'.
+    Trả về danh sách dòng: mỗi dòng gồm row_idx, thu, tiet, show_thu, rowspan, cells (từ cột 2 trở đi).
+    """
+    rows = []
+    if not tkb_data:
+        return rows
+
+    i = 0
+    while i < len(tkb_data):
+        thu_val = str(tkb_data[i][0])
+        j = i
+        # gom nhóm liên tiếp cùng 'Thứ'
+        while j < len(tkb_data) and str(tkb_data[j][0]) == thu_val:
+            j += 1
+        span = j - i  # số dòng trong nhóm
+
+        # tạo dòng output
+        for k in range(i, j):
+            row = {
+                "row_idx": k,
+                "thu": tkb_data[k][0],
+                "tiet": tkb_data[k][1],
+                "show_thu": (k == i),           # chỉ hiển thị ô 'Thứ' ở dòng đầu của nhóm
+                "rowspan": span if k == i else 0,
+                "cells": [{"col_idx": col, "value": tkb_data[k][col]}
+                          for col in range(2, len(tkb_data[k]))]
+            }
+            rows.append(row)
+        i = j
+    return rows
+
 # ================== ROUTES ==================
 
 @app.route('/', methods=['GET', 'POST'])
@@ -289,10 +322,13 @@ def tkb():
         if headers and tkb_data:
             vi_pham, dup_cells = check_gv_trung_tiet_v2(tkb_data, headers, class_labels)
 
+    tkb_rows = build_rows_with_rowspan(tkb_data) if tkb_data else []
+
     return render_template(
         'tkb.html',
         headers=headers,
         tkb_data=tkb_data,
+        tkb_rows=tkb_rows,
         class_labels=class_labels,
         vi_pham=vi_pham,
         dup_cells=dup_cells,
