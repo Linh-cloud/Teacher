@@ -199,7 +199,7 @@ def normalize_thu(value: str) -> Markup:
     s = re.sub(r"/\s*n(\s*\)|\b)", "/\n\\1", s)  # "/n(" -> "/\n(", "/n" -> "/\n"
 
     # Bỏ ngoặc (Sáng)/(Chiều) nếu có, để hiển thị gọn
-    s = s.replace("(Sáng)", "Sáng").replace("(Chiều)", "Chiều")
+    s = s.replace("(Sáng)", "Sáng").replace("(Chiều)", "Chiều").replace("(Chi)", "Chiều")
 
     # Tạo HTML với <br>
     parts = [p.strip(" /") for p in s.split("\n") if p.strip()]
