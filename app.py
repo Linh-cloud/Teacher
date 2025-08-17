@@ -200,7 +200,7 @@ def thu_key(value: str) -> str:
     s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\\n", " ")
     s = re.sub(r"/\s*n\s*\(?", "/", s, flags=re.I)     # '/n', '/n(' -> '/'
     s = re.sub(r"\s*/\s*", " / ", s, count=1)          # chuẩn hoá khoảng trắng quanh '/'
-    s = s.replace("(Sáng)", "Sáng").replace("(Chiều)", "Chiều").replace("(Chi)", "Chiều")
+    s = s.replace("Sáng)", "Sáng").replace("Chiều)", "Chiều").replace("Chi)", "Chiều")
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
