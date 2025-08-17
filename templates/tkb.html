@@ -90,48 +90,59 @@
                   <th colspan="2" class="header-class">{{ label }}</th>
                 {% endfor %}
               </tr>
+
               <tr>
                 {% for _ in class_labels %}
                   <th class="header-mon">Môn</th>
                   <th class="header-gv">GV dạy</th>
                 {% endfor %}
               </tr>
+
             </thead>
 
             <tbody>
-            {% if tkb_rows %}
-              {% for r in tkb_rows %}
-              <tr>
+            {% for r in tkb_rows %}
+              <tr data-thu="{{ r.thu_raw }}">
                 {% if r.show_thu %}
-                  <td rowspan="{{ r.rowspan }}" class="thu-cell" role="rowheader">
-                    <span class="thu-text">{{ r.thu_html|safe }}</span>
+                  <td rowspan="{{ r.rowspan }}" class="thu-cell" data-span="{{ r.rowspan }}">
+                    <span class="thu-text">{{ r.thu_html }}</span>
                     <input type="hidden" class="thu-val" value="{{ r.thu_raw }}">
                   </td>
                 {% endif %}
+
                 <td>
                   <span class="tiet-text">{{ r.tiet }}</span>
                   <input type="hidden" class="tiet-val" value="{{ r.tiet }}">
+                  <!-- NEW: luôn có “Thứ” dạng thô cho từng hàng -->
+                  <input type="hidden" class="thu-raw" value="{{ r.thu_raw }}">
                 </td>
+
                 {% for cell in r.cells %}
                   <td>
                     <input type="text"
-                           name="cell_{{ r.row_idx }}_{{ cell.col_idx }}"
-                           value="{{ cell.value }}"
-                           class="big-input tkb-cell"
-                           data-role="{{ 'mon' if ((cell.col_idx - 2) % 2 == 0) else 'gv' }}"
-                           autocomplete="off" inputmode="text" readonly>
+                          name="cell_{{ r.row_idx }}_{{ cell.col_idx }}"
+                          value="{{ cell.value }}"
+                          class="big-input tkb-cell"
+                          data-role="{{ 'mon' if ((cell.col_idx - 2) % 2 == 0) else 'gv' }}"
+                          autocomplete="off" inputmode="text" readonly>
                   </td>
                 {% endfor %}
               </tr>
-              {% endfor %}
-            {% endif %}
+            {% endfor %}
             </tbody>
+
           </table>
+
         </div>
+
       </div>
+
     {% endif %}
+
   </form>
+
 </div>
+
 {% endblock %}
 
 {% block extra_script %}
@@ -251,9 +262,14 @@ function getHeaders(){
   });
   return { classLabels };
 }
+
 function getThuTiet(tr){
-  const thu = $('.thu-val', tr)?.value || '';
-  const tiet = parseInt($('.tiet-val', tr)?.value || '', 10);
+  const thu =
+    tr.querySelector('.thu-val')?.value ||      // nếu đang ở dòng đầu nhóm (có ô gộp)
+    tr.querySelector('.thu-raw')?.value ||      // luôn có
+    tr.getAttribute('data-thu') || '';          // dự phòng
+  const t = tr.querySelector('.tiet-val')?.value || '';
+  const tiet = parseInt(t, 10);
   return { thu, tiet: Number.isFinite(tiet) ? tiet : '' };
 }
 

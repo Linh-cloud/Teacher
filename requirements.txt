@@ -1,5 +1,8 @@
-flask
-pandas
-openpyxl
-werkzeug
-gunicorn
+Flask==3.0.3
+Jinja2>=3.1        # không bắt buộc, nhưng tách rõ phụ thuộc
+MarkupSafe>=2.1    # bạn import trực tiếp Markup từ đây
+Werkzeug>=3.0
+pandas==2.2.2
+numpy>=1.26        # để tránh chuyện wheel cũ trên một số môi trường
+openpyxl==3.1.5
+gunicorn==21.2.0
