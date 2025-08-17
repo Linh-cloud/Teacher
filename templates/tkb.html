@@ -58,7 +58,7 @@
         </div>
         <button class="btn btn-success" type="submit" name="action" value="save_edit">Lưu chỉnh sửa</button>
         <a href="{{ url_for('teacher_off') }}" class="btn btn-info">Thống kê ngày nghỉ GV</a>
-        <span id="autosave-status" class="align-self-center text-success fw-medium"></span>
+        <span id="autosave-status" class="align-self-center text-success fw-medium" aria-live="polite"></span>
       </div>
     </div>
 
@@ -70,7 +70,7 @@
     {% if headers %}
       <h5 class="text-center mt-4">Bảng thời khóa biểu (chế độ xem mặc định):</h5>
 
-      <!-- BÁO CÁO/VI PHẠM: bọc và ẨN mặc định -->
+      <!-- BÁO CÁO/VI PHẠM: ẨN mặc định -->
       <div id="reportsWrap" class="d-none">
         <div id="duplicateTableContainer" class="mt-3"></div>
         <div id="minPeriodDayContainer" class="mt-3"></div>
@@ -81,6 +81,7 @@
       <div class="table-container mt-2">
         <div class="zoom-box" style="transform: scale({{ zoom|default(1) }});">
           <table class="big-table" id="tkbTable" data-col-offset="2">
+            <caption class="visually-hidden">Thời khóa biểu theo lớp, cột đầu là Thứ, cột thứ hai là Tiết.</caption>
             <thead>
               <tr>
                 <th rowspan="2" class="header-small">Thứ</th>
@@ -102,8 +103,8 @@
               {% for r in tkb_rows %}
               <tr>
                 {% if r.show_thu %}
-                  <td rowspan="{{ r.rowspan }}" class="thu-cell">
-                    <span class="thu-text">{{ r.thu_html }}</span>
+                  <td rowspan="{{ r.rowspan }}" class="thu-cell" role="rowheader">
+                    <span class="thu-text">{{ r.thu_html|safe }}</span>
                     <input type="hidden" class="thu-val" value="{{ r.thu_raw }}">
                   </td>
                 {% endif %}
@@ -123,8 +124,6 @@
                 {% endfor %}
               </tr>
               {% endfor %}
-            {% else %}
-              {# fallback cũ nếu bạn muốn #}
             {% endif %}
             </tbody>
           </table>
@@ -204,8 +203,7 @@ const saveState = debounce(()=>{
   renderAllReports();
 }, 180);
 function initAutosave(){
-  undoStack.length=0; redoStack=[];
-  undoStack.push(JSON.stringify(getCurrentData()));
+  undoStack.length=0; redoStack=[]; undoStack.push(JSON.stringify(getCurrentData()));
   $('#tkbTable')?.addEventListener('input', e=>{
     if (e.target?.matches('input[type="text"]')) saveState();
   });
@@ -240,7 +238,6 @@ function setReportsVisible(on){
 }
 (() => {
   const toggle = $('#toggleReports'); if (!toggle) return;
-  // mặc định ẩn; đọc trạng thái đã lưu
   const saved = localStorage.getItem('tkb_show_reports') === '1';
   toggle.checked = !!saved; setReportsVisible(!!saved);
   toggle.addEventListener('change', e => setReportsVisible(e.target.checked));
@@ -276,7 +273,6 @@ function renderDuplicateTable(){
       }
     });
   });
-  // Không còn alert xanh khi không có lỗi
   $('#duplicateTableContainer').innerHTML = results.length
     ? `<table class="table table-bordered mb-3"><thead class="table-danger">
          <tr><th>Giáo viên</th><th>Thứ</th><th>Tiết</th><th>Số lần trùng</th></tr>
@@ -345,7 +341,6 @@ function renderConsecutivePeriodsTable(){
 }
 
 function renderAllReports(){
-  // Chỉ vẽ khi công tắc đang bật
   if (!$('#toggleReports')?.checked) return;
   renderDuplicateTable();
   const v = parseInt($('#min_period_input')?.value || '2', 10) || 2;
@@ -357,8 +352,7 @@ function renderAllReports(){
 window.addEventListener('DOMContentLoaded', ()=>{
   {% if headers %}
     initAutosave();
-    // init toggle báo cáo theo localStorage trong setReportsVisible()
-    // nếu bật thì sẽ tự render
+    // Khi bật công tắc (đọc từ localStorage), setReportsVisible() sẽ tự render
     $('#min_period_input')?.addEventListener('input', debounce(()=>{
       if ($('#toggleReports')?.checked) {
         const v = parseInt($('#min_period_input').value || '2', 10) || 2;

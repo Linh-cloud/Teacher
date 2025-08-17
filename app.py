@@ -188,47 +188,67 @@ def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
 
     return teacher_off_schedule, weekdays
 
-def normalize_thu(value: str) -> Markup:
+def thu_key(value: str) -> str:
+    """
+    Chuẩn hoá để so sánh/gộp nhóm:
+    - '/n' hoặc '/n(' -> '/'
+    - thống nhất khoảng trắng quanh '/'
+    - bỏ ngoặc (Sáng)/(Chiều), chuẩn hoá xuống 1 khoảng trắng
+    - bỏ \r\n, literal '\\n'
+    """
     s = str(value or "").strip()
-
-    # Chuẩn hoá linebreak các kiểu
-    s = s.replace("\r\n", "\n").replace("\r", "\n")
-    s = s.replace("\\n", "\n")                  # literal "\n" -> newline
-
-    # Sửa lỗi gõ phổ biến "/n" -> "/\n"
-    s = re.sub(r"/\s*n(\s*\)|\b)", "/\n\\1", s)  # "/n(" -> "/\n(", "/n" -> "/\n"
-
-    # Bỏ ngoặc (Sáng)/(Chiều) nếu có, để hiển thị gọn
+    s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\\n", " ")
+    s = re.sub(r"/\s*n\s*\(?", "/", s, flags=re.I)     # '/n', '/n(' -> '/'
+    s = re.sub(r"\s*/\s*", " / ", s, count=1)          # chuẩn hoá khoảng trắng quanh '/'
     s = s.replace("(Sáng)", "Sáng").replace("(Chiều)", "Chiều").replace("(Chi)", "Chiều")
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
 
-    # Tạo HTML với <br>
-    parts = [p.strip(" /") for p in s.split("\n") if p.strip()]
-    html = " /<br>".join(parts) if len(parts) > 1 else (parts[0] if parts else "")
+def normalize_thu_display(value: str) -> Markup:
+    """
+    Dùng để hiển thị: 'Thứ 2 / Sáng' -> 'Thứ 2 /<br>Sáng'
+    (sau khi đã được chuẩn hoá như thu_key)
+    """
+    s = thu_key(value)
+    # tách theo ' / ' lần đầu thành dòng 2
+    parts = s.split(" / ", 1)
+    if len(parts) == 2:
+        html = f"{parts[0]} /<br>{parts[1]}"
+    else:
+        html = s.replace("\n", "<br>")
     return Markup(html)
 
 def build_rows_with_rowspan(tkb_data):
+    """
+    Gộp các hàng có cùng 'Thứ' theo khoá chuẩn hoá (thu_key), tạo tkb_rows cho template.
+    """
     rows = []
     if not tkb_data:
         return rows
+
     i = 0
     while i < len(tkb_data):
-        thu_val = str(tkb_data[i][0])
+        key_i = thu_key(tkb_data[i][0] if len(tkb_data[i]) > 0 else "")
         j = i
-        while j < len(tkb_data) and str(tkb_data[j][0]) == thu_val:
+        while j < len(tkb_data):
+            key_j = thu_key(tkb_data[j][0] if len(tkb_data[j]) > 0 else "")
+            if key_j != key_i:
+                break
             j += 1
-        span = j - i
-        for k in range(i, j):
-            row = {
-                "row_idx": k,
-                "thu_raw": tkb_data[k][0],                 # giữ giá trị thô cho JS
-                "thu_html": normalize_thu(tkb_data[k][0]), # giá trị đã chuẩn hoá cho hiển thị
-                "tiet": tkb_data[k][1],
-                "show_thu": (k == i),
-                "rowspan": span if k == i else 0,
-                "cells": [{"col_idx": col, "value": tkb_data[k][col]}
-                          for col in range(2, len(tkb_data[k]))]
-            }
-            rows.append(row)
+        rowspan = max(1, j - i)
+
+        for r in range(i, j):
+            row = tkb_data[r]
+            cells = [{"col_idx": c, "value": row[c] if c < len(row) else ""} for c in range(2, len(row))]
+            rows.append({
+                "row_idx": r,
+                "thu_raw": row[0] if len(row) > 0 else "",
+                "thu_html": normalize_thu_display(row[0] if len(row) > 0 else ""),
+                "tiet": row[1] if len(row) > 1 else "",
+                "show_thu": (r == i),
+                "rowspan": rowspan if r == i else 0,
+                "cells": cells,
+            })
         i = j
     return rows
 
