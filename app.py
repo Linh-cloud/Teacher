@@ -272,7 +272,6 @@ def tkb():
 
     if request.method == 'POST':
         file = request.files.get('tkb_file')
-        action = request.form.get('action')
 
         # Upload file mới
         if file and file.filename:
@@ -319,19 +318,6 @@ def tkb():
             if not headers or not tkb_data:
                 flash("Chưa có dữ liệu TKB. Vui lòng tải tệp .xlsx.", "warning")
                 return redirect(url_for('tkb'))
-
-            if action == 'save_edit':
-                new_data = []
-                for row_idx, row in enumerate(tkb_data):
-                    new_row = []
-                    for col_idx, cell in enumerate(row):
-                        field_name = f"cell_{row_idx}_{col_idx}"
-                        new_value = request.form.get(field_name, cell)
-                        new_row.append(new_value)
-                    new_data.append(new_row)
-                tkb_data = new_data
-                session['tkb_data'] = tkb_data
-                flash("Lưu chỉnh sửa thành công.", "success")
 
         # Kiểm tra trùng GV
         vi_pham, dup_cells = check_gv_trung_tiet_v2(tkb_data, headers, class_labels)
