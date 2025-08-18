@@ -10,7 +10,7 @@
         <input class="form-check-input" type="checkbox" id="toggleEdit">
         <label class="form-check-label" for="toggleEdit">Chế độ chỉnh sửa</label>
       </div>
-      {# ⬇️ ĐÃ BỎ công tắc Hiện báo cáo/vi phạm #}
+      <!-- ĐÃ BỎ công tắc/nhóm nút khác -->
     </div>
   </div>
 
@@ -49,11 +49,7 @@
 
       <!-- Hành động -->
       <div class="col-12 col-lg-10 d-flex flex-wrap gap-2 justify-content-center">
-        <div class="btn-group" role="group" aria-label="Hoàn tác/làm lại">
-          <button type="button" class="btn btn-outline-secondary" id="btnUndo">Trước đó</button>
-          <button type="button" class="btn btn-outline-secondary" id="btnRedo">Sau đó</button>
-        </div>
-        <button class="btn btn-success" type="submit" name="action" value="save_edit">Lưu chỉnh sửa</button>
+        <!-- BỎ Undo/Redo + BỎ nút Lưu chỉnh sửa -->
         <a href="{{ url_for('teacher_off') }}" class="btn btn-info">Thống kê ngày nghỉ GV</a>
         <span id="autosave-status" class="align-self-center text-success fw-medium"></span>
       </div>
@@ -118,8 +114,6 @@
                 {% endfor %}
               </tr>
               {% endfor %}
-            {% else %}
-              {# fallback nếu cần #}
             {% endif %}
             </tbody>
           </table>
@@ -133,10 +127,10 @@
 {% block extra_script %}
 <script>
 /* ========= Helpers ========= */
-const $ = (s, r=document) => r.querySelector(s);
+const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-const debounce = (fn, wait=150) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),wait); }; };
+const clamp   = (n, min, max) => Math.max(min, Math.min(max, n));
+const debounce= (fn, wait=150)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),wait); }; };
 
 /* ========= Toggle ảnh mẫu ========= */
 (() => {
@@ -157,108 +151,174 @@ const debounce = (fn, wait=150) => { let t; return (...a)=>{ clearTimeout(t); t=
   const btnMinus = $('#zoomMinus'), btnPlus = $('#zoomPlus');
   function apply(v){
     v = parseFloat(v) || 1;
-    if (percent) percent.textContent = Math.round(v*100);
+    if (percent)    percent.textContent = Math.round(v*100);
     if (hiddenZoom) hiddenZoom.value = v;
     const box = $('.zoom-box'); if (box) box.style.transform = `scale(${v})`;
   }
   range?.addEventListener('input', e=>apply(e.target.value));
-  btnMinus?.addEventListener('click', ()=>{ const v = clamp(parseFloat(range?.value||'1')-0.05, 0.3, 2); if (range) range.value = v.toFixed(2); apply(v); });
-  btnPlus?.addEventListener('click', ()=>{ const v = clamp(parseFloat(range?.value||'1')+0.05, 0.3, 2); if (range) range.value = v.toFixed(2); apply(v); });
+  btnMinus?.addEventListener('click', ()=>{ const v = clamp(parseFloat(range?.value||'1')-0.05,0.3,2); if(range) range.value=v.toFixed(2); apply(v); });
+  btnPlus ?.addEventListener('click', ()=>{ const v = clamp(parseFloat(range?.value||'1')+0.05,0.3,2); if(range) range.value=v.toFixed(2); apply(v); });
   range && apply(range.value);
 })();
 
-/* ========= Toggle edit (readonly on/off) ========= */
+/* ========= Chế độ chỉnh sửa ========= */
 (() => {
-  const setEdit = (on) => $$('.tkb-cell').forEach(inp => on ? inp.removeAttribute('readonly') : inp.setAttribute('readonly',''));
-  setEdit(false); // mặc định: xem
+  const setEdit = (on) => $$('.tkb-cell').forEach(inp => on ? inp.removeAttribute('readonly')
+                                                             : inp.setAttribute('readonly',''));
+  setEdit(false);
   $('#toggleEdit')?.addEventListener('change', e => setEdit(e.target.checked));
 })();
 
-/* ========= Undo/Redo + Autosave (giữ như bạn đang có) ========= */
-const undoStack=[], autosaveStatus=$('#autosave-status'); let redoStack=[];
+/* ========= Autosave (localStorage) ========= */
+const autosaveStatus = $('#autosave-status');
+const markSaved = (t="Đã lưu tạm") => { if (autosaveStatus) autosaveStatus.textContent = t; };
+
 function getCurrentData(){
-  const data=[]; $$('#tkbTable tbody tr').forEach(tr=>{
-    const row=[]; $$('input[name^="cell_"]', tr).forEach(inp=>row.push(inp.value)); data.push(row);
-  }); return data;
+  const data = [];
+  $$('#tkbTable tbody tr').forEach(tr=>{
+    const row=[];
+    $$('input[name^="cell_"]', tr).forEach(inp=>row.push(inp.value));
+    data.push(row);
+  });
+  return data;
 }
 function putData(data){
   $$('#tkbTable tbody tr').forEach((tr,i)=>{
-    $$('input[name^="cell_"]', tr).forEach((inp,j)=>{ if (data[i]?.[j] !== undefined) inp.value = data[i][j]; });
+    $$('input[name^="cell_"]', tr).forEach((inp,j)=>{
+      if (data[i]?.[j] !== undefined) inp.value = data[i][j];
+    });
   });
 }
-const markSaved=(t="Đã lưu tạm")=>{ if(autosaveStatus) autosaveStatus.textContent=t; };
+
 const saveState = debounce(()=>{
-  const data=getCurrentData();
-  undoStack.push(JSON.stringify(data)); if(undoStack.length>50) undoStack.shift();
-  redoStack=[]; localStorage.setItem("tkb_autosave", JSON.stringify(data));
+  const data = getCurrentData();
+  localStorage.setItem("tkb_autosave", JSON.stringify(data));
   markSaved("Đã lưu tạm");
   renderAllReports();
-}, 180);
+}, 160);
+
 function initAutosave(){
-  undoStack.length=0; redoStack=[];
-  undoStack.push(JSON.stringify(getCurrentData()));
   $('#tkbTable')?.addEventListener('input', e=>{
     if (e.target?.matches('input[type="text"]')) saveState();
   });
-  const draft=localStorage.getItem("tkb_autosave");
-  if (draft && confirm("Bạn có muốn khôi phục dữ liệu chưa lưu không?")){
-    try{ putData(JSON.parse(draft)); markSaved("Đã khôi phục dữ liệu tạm!"); }catch(_){}
+  const draft = localStorage.getItem("tkb_autosave");
+  if (draft && confirm("Khôi phục dữ liệu chỉnh sửa chưa lưu?")){
+    try { putData(JSON.parse(draft)); markSaved("Đã khôi phục dữ liệu tạm!"); } catch(_){}
   }
 }
-$('#btnUndo')?.addEventListener('click', ()=>{ if(undoStack.length>1){ const cur=undoStack.pop(); redoStack.push(cur); const prev=JSON.parse(undoStack.at(-1)); putData(prev); markSaved("Hoàn tác thành công"); renderAllReports(); }});
-$('#btnRedo')?.addEventListener('click', ()=>{ if(redoStack.length){ const next=JSON.parse(redoStack.pop()); undoStack.push(JSON.stringify(next)); putData(next); markSaved("Đã redo"); renderAllReports(); }});
 
 /* ========= Báo cáo ========= */
-function getHeaders(){
-  const headRows=$$('#tkbTable thead tr'); if(headRows.length<2) return {classLabels:[]};
-  const classLabels=[]; $$('th', headRows[0]).forEach((th,idx)=>{ if (idx>=2 && th.colSpan===2) classLabels.push((th.textContent||'').trim()); });
-  return { classLabels };
+let CLASS_LABELS = [];
+function computeClassLabels(){
+  const headRows = $$('#tkbTable thead tr');
+  CLASS_LABELS = [];
+  if (headRows.length >= 2){
+    $$('th', headRows[0]).forEach((th,idx)=>{
+      if (idx>=2 && th.colSpan===2) CLASS_LABELS.push((th.textContent||'').trim());
+    });
+  }
 }
 function getThuTiet(tr){
-  const thu = $('.thu-val', tr)?.value || '';
-  const tiet = parseInt($('.tiet-val', tr)?.value || '', 10);
+  // lấy 'Thứ' ở chính hàng; nếu không có (rowspan) thì dò ngược
+  let thu = $('.thu-val', tr)?.value || '';
+  if (!thu){
+    let prev = tr.previousElementSibling;
+    while (prev){
+      const v = $('.thu-val', prev)?.value;
+      if (v){ thu = v; break; }
+      prev = prev.previousElementSibling;
+    }
+  }
+  const tietVal = $('.tiet-val', tr)?.value || '';
+  const tiet = parseInt(tietVal, 10);
   return { thu, tiet: Number.isFinite(tiet) ? tiet : '' };
 }
+
 function renderDuplicateTable(){
-  const tbody = $('#tkbTable')?.tBodies?.[0]; if(!tbody) return;
-  const results=[]; $$('input.tkb-cell', tbody).forEach(inp=>{ inp.classList.remove('dup-cell'); inp.parentElement?.classList.remove('dup-cell'); });
+  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) return;
+  const results=[];
+  $$('input.tkb-cell', tbody).forEach(inp=>{ inp.classList.remove('dup-cell'); inp.parentElement?.classList.remove('dup-cell'); });
   Array.from(tbody.rows).forEach(tr=>{
     const { thu, tiet } = getThuTiet(tr);
-    const seen={}; $$('input[data-role="gv"]', tr).forEach(inp=>{ const v=inp.value.trim(); if(!v) return; (seen[v] ||= []).push(inp); });
-    Object.entries(seen).forEach(([gv,arr])=>{ if (arr.length>1){ arr.forEach(i=>{ i.classList.add('dup-cell'); i.parentElement?.classList.add('dup-cell'); }); results.push({gv, thu, tiet, so_lan_trung: arr.length}); }});
+    const seen = {};
+    $$('input[data-role="gv"]', tr).forEach(inp=>{
+      const v = inp.value.trim(); if (!v) return; (seen[v] ||= []).push(inp);
+    });
+    Object.entries(seen).forEach(([gv, arr])=>{
+      if (arr.length>1){
+        arr.forEach(i=>{ i.classList.add('dup-cell'); i.parentElement?.classList.add('dup-cell'); });
+        results.push({ gv, thu, tiet, so_lan_trung: arr.length });
+      }
+    });
   });
   $('#duplicateTableContainer').innerHTML = results.length
-    ? `<table class="table table-bordered mb-3"><thead class="table-danger"><tr><th>Giáo viên</th><th>Thứ</th><th>Tiết</th><th>Số lần trùng</th></tr></thead><tbody>${
-        results.map(r=>`<tr class="table-danger"><td>${r.gv}</td><td>${r.thu}</td><td>${r.tiet}</td><td>${r.so_lan_trung}</td></tr>`).join('')
-      }</tbody></table>` : ``;
+    ? `<table class="table table-bordered mb-3"><thead class="table-danger">
+         <tr><th>Giáo viên</th><th>Thứ</th><th>Tiết</th><th>Số lần trùng</th></tr>
+       </thead><tbody>${
+         results.map(r=>`<tr class="table-danger"><td>${r.gv}</td><td>${r.thu}</td><td>${r.tiet}</td><td>${r.so_lan_trung}</td></tr>`).join('')
+       }</tbody></table>` : ``;
 }
+
 function renderMinPeriodPerDayTable(minPeriods){
-  const tbody=$('#tkbTable')?.tBodies?.[0]; if(!tbody) return;
-  const { classLabels } = getHeaders(); const dayTiet={};
+  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) return;
+  const dayTiet = {};
   Array.from(tbody.rows).forEach(tr=>{
     const { thu, tiet } = getThuTiet(tr);
-    $$('input[data-role="mon"]', tr).forEach((inp,i)=>{ const label=classLabels[i]; if (label && inp.value.trim()){ (dayTiet[label] ||= {}); (dayTiet[label][thu] ||= []).push(tiet); }});
+    $$('input[data-role="mon"]', tr).forEach((inp,i)=>{
+      const label = CLASS_LABELS[i];
+      if (label && inp.value.trim()){
+        (dayTiet[label] ||= {}); (dayTiet[label][thu] ||= []).push(tiet);
+      }
+    });
   });
-  const rows=[]; for (const label of classLabels){ const days=dayTiet[label]||{}; for (const thu in days){ const arr=(days[thu]||[]).filter(n=>n!=='' && Number.isFinite(n)).sort((a,b)=>a-b); if (arr.length < minPeriods) rows.push({label, thu, count: arr.length, req: minPeriods, periods: arr.join(', ')}); }}
+  const rows=[];
+  for (const label of CLASS_LABELS){
+    const days = dayTiet[label]||{};
+    for (const thu in days){
+      const arr = (days[thu]||[]).filter(n=>n!=='' && Number.isFinite(n)).sort((a,b)=>a-b);
+      if (arr.length < minPeriods) rows.push({label, thu, count: arr.length, req: minPeriods, periods: arr.join(', ')});
+    }
+  }
   $('#minPeriodDayContainer').innerHTML = rows.length
-    ? `<table class="table table-bordered mb-3"><thead class="table-warning"><tr><th>Lớp</th><th>Thứ</th><th>Số tiết thực tế</th><th>Yêu cầu tối thiểu</th><th>Các tiết</th></tr></thead><tbody>${
-        rows.map(r=>`<tr class="table-warning"><td>${r.label}</td><td>${r.thu}</td><td>${r.count}</td><td>${r.req}</td><td>${r.periods}</td></tr>`).join('')
-      }</tbody></table>` : ``;
+    ? `<table class="table table-bordered mb-3"><thead class="table-warning">
+         <tr><th>Lớp</th><th>Thứ</th><th>Số tiết thực tế</th><th>Yêu cầu tối thiểu</th><th>Các tiết</th></tr>
+       </thead><tbody>${
+         rows.map(r=>`<tr class="table-warning"><td>${r.label}</td><td>${r.thu}</td><td>${r.count}</td><td>${r.req}</td><td>${r.periods}</td></tr>`).join('')
+       }</tbody></table>` : ``;
 }
+
 function renderConsecutivePeriodsTable(){
-  const tbody=$('#tkbTable')?.tBodies?.[0]; if(!tbody) return;
-  const { classLabels } = getHeaders(); const dayTiet={};
+  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) return;
+  const dayTiet = {};
   Array.from(tbody.rows).forEach(tr=>{
     const { thu, tiet } = getThuTiet(tr);
-    $$('input[data-role="mon"]', tr).forEach((inp,i)=>{ const label=classLabels[i]; if (label && inp.value.trim()){ (dayTiet[label] ||= {}); (dayTiet[label][thu] ||= []).push(tiet); }});
+    $$('input[data-role="mon"]', tr).forEach((inp,i)=>{
+      const label = CLASS_LABELS[i];
+      if (label && inp.value.trim()){
+        (dayTiet[label] ||= {}); (dayTiet[label][thu] ||= []).push(tiet);
+      }
+    });
   });
-  const rows=[]; for (const label of classLabels){ const days=dayTiet[label]||{}; for (const thu in days){ const arr=(days[thu]||[]).filter(n=>n!=='' && Number.isFinite(n)).sort((a,b)=>a-b); if (arr.length <= 1) continue; let ok=true; for (let i=1;i<arr.length;i++){ if (arr[i]-arr[i-1]!==1){ ok=false; break; } } if (!ok) rows.push({label, thu, periods: arr.join(', '), note: 'Các tiết không liền nhau (xé lẻ)!'}); }}
+  const rows=[];
+  for (const label of CLASS_LABELS){
+    const days = dayTiet[label]||{};
+    for (const thu in days){
+      const arr = (days[thu]||[]).filter(n=>n!=='' && Number.isFinite(n)).sort((a,b)=>a-b);
+      if (arr.length <= 1) continue;
+      let ok = true; for (let i=1;i<arr.length;i++){ if (arr[i]-arr[i-1]!==1){ ok=false; break; } }
+      if (!ok) rows.push({label, thu, periods: arr.join(', '), note: 'Các tiết không liền nhau (xé lẻ)!'});
+    }
+  }
   $('#consecutivePeriodsContainer').innerHTML = rows.length
-    ? `<table class="table table-bordered mb-3"><thead class="table-warning"><tr><th>Lớp</th><th>Thứ</th><th>Các tiết</th><th>Thông báo</th></tr></thead><tbody>${
-        rows.map(r=>`<tr class="table-warning"><td>${r.label}</td><td>${r.thu}</td><td>${r.periods}</td><td>${r.note}</td></tr>`).join('')
-      }</tbody></table>` : ``;
+    ? `<table class="table table-bordered mb-3"><thead class="table-warning">
+         <tr><th>Lớp</th><th>Thứ</th><th>Các tiết</th><th>Thông báo</th></tr>
+       </thead><tbody>${
+         rows.map(r=>`<tr class="table-warning"><td>${r.label}</td><td>${r.thu}</td><td>${r.periods}</td><td>${r.note}</td></tr>`).join('')
+       }</tbody></table>` : ``;
 }
+
 function renderAllReports(){
+  computeClassLabels();
   renderDuplicateTable();
   const v = parseInt($('#min_period_input')?.value || '2', 10) || 2;
   renderMinPeriodPerDayTable(v);
