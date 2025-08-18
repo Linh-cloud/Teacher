@@ -10,7 +10,6 @@
         <input class="form-check-input" type="checkbox" id="toggleEdit">
         <label class="form-check-label" for="toggleEdit">Chế độ chỉnh sửa</label>
       </div>
-      <!-- ĐÃ BỎ công tắc/nhóm nút khác -->
     </div>
   </div>
 
@@ -49,7 +48,6 @@
 
       <!-- Hành động -->
       <div class="col-12 col-lg-10 d-flex flex-wrap gap-2 justify-content-center">
-        <!-- BỎ Undo/Redo + BỎ nút Lưu chỉnh sửa -->
         <a href="{{ url_for('teacher_off') }}" class="btn btn-info">Thống kê ngày nghỉ GV</a>
         <span id="autosave-status" class="align-self-center text-success fw-medium"></span>
       </div>
@@ -61,6 +59,28 @@
     </div>
 
     {% if headers %}
+      <!-- Tóm tắt nhanh -->
+      <div class="row g-2 mt-3" id="reportSummary" aria-live="polite">
+        <div class="col-12 col-md-4">
+          <div class="alert alert-danger m-0 d-flex justify-content-between align-items-center">
+            <span>Trùng GV cùng tiết</span>
+            <strong id="sumDup">0</strong>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="alert alert-warning m-0 d-flex justify-content-between align-items-center">
+            <span>Thiếu số tiết tối thiểu</span>
+            <strong id="sumMin">0</strong>
+          </div>
+        </div>
+        <div class="col-12 col-md-4">
+          <div class="alert alert-warning m-0 d-flex justify-content-between align-items-center">
+            <span>Xé lẻ (không liền tiết)</span>
+            <strong id="sumSplit">0</strong>
+          </div>
+        </div>
+      </div>
+
       <h5 class="text-center mt-4">Bảng thời khóa biểu (chế độ xem mặc định):</h5>
 
       <!-- LUÔN HIỆN báo cáo/vi phạm -->
@@ -87,7 +107,6 @@
                 {% endfor %}
               </tr>
             </thead>
-
             <tbody>
             {% if tkb_rows %}
               {% for r in tkb_rows %}
@@ -103,13 +122,19 @@
                   <input type="hidden" class="tiet-val" value="{{ r.tiet }}">
                 </td>
                 {% for cell in r.cells %}
+                  {% set cls_idx = ((cell.col_idx - 2) // 2) %}
                   <td>
                     <input type="text"
                            name="cell_{{ r.row_idx }}_{{ cell.col_idx }}"
                            value="{{ cell.value }}"
                            class="big-input tkb-cell"
                            data-role="{{ 'mon' if ((cell.col_idx - 2) % 2 == 0) else 'gv' }}"
-                           autocomplete="off" inputmode="text" readonly>
+                           data-c="{{ cls_idx }}"
+                           data-r="{{ r.row_idx }}"
+                           data-col="{{ cell.col_idx }}"
+                           data-class-label="{{ class_labels[cls_idx] if class_labels and cls_idx < class_labels|length }}"
+                           autocomplete="off" inputmode="text" readonly
+                           aria-label="{{ ('Môn' if ((cell.col_idx - 2) % 2 == 0) else 'GV') ~ ' - ' ~ (class_labels[cls_idx] if class_labels and cls_idx < class_labels|length) }}">
                   </td>
                 {% endfor %}
               </tr>
@@ -129,8 +154,16 @@
 /* ========= Helpers ========= */
 const $  = (s, r=document) => r.querySelector(s);
 const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
-const clamp   = (n, min, max) => Math.max(min, Math.min(max, n));
-const debounce= (fn, wait=150)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),wait); }; };
+const clamp    = (n, min, max) => Math.max(min, Math.min(max, n));
+const debounce = (fn, wait=150)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),wait); }; };
+
+/* ========= Dọn session & localStorage khi rời trang ========= */
+window.addEventListener('beforeunload', () => {
+  localStorage.removeItem('tkb_autosave');
+  try {
+    navigator.sendBeacon("{{ url_for('session_reset') }}", new Blob(["bye"], {type:"text/plain"}));
+  } catch(_) {}
+});
 
 /* ========= Toggle ảnh mẫu ========= */
 (() => {
@@ -176,20 +209,15 @@ const markSaved = (t="Đã lưu tạm") => { if (autosaveStatus) autosaveStatus.
 function getCurrentData(){
   const data = [];
   $$('#tkbTable tbody tr').forEach(tr=>{
-    const row=[];
-    $$('input[name^="cell_"]', tr).forEach(inp=>row.push(inp.value));
-    data.push(row);
+    const row=[]; $$('input[name^="cell_"]', tr).forEach(inp=>row.push(inp.value)); data.push(row);
   });
   return data;
 }
 function putData(data){
   $$('#tkbTable tbody tr').forEach((tr,i)=>{
-    $$('input[name^="cell_"]', tr).forEach((inp,j)=>{
-      if (data[i]?.[j] !== undefined) inp.value = data[i][j];
-    });
+    $$('input[name^="cell_"]', tr).forEach((inp,j)=>{ if (data[i]?.[j] !== undefined) inp.value = data[i][j]; });
   });
 }
-
 const saveState = debounce(()=>{
   const data = getCurrentData();
   localStorage.setItem("tkb_autosave", JSON.stringify(data));
@@ -235,7 +263,7 @@ function getThuTiet(tr){
 }
 
 function renderDuplicateTable(){
-  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) return;
+  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) { $('#duplicateTableContainer').innerHTML=''; return 0; }
   const results=[];
   $$('input.tkb-cell', tbody).forEach(inp=>{ inp.classList.remove('dup-cell'); inp.parentElement?.classList.remove('dup-cell'); });
   Array.from(tbody.rows).forEach(tr=>{
@@ -257,10 +285,11 @@ function renderDuplicateTable(){
        </thead><tbody>${
          results.map(r=>`<tr class="table-danger"><td>${r.gv}</td><td>${r.thu}</td><td>${r.tiet}</td><td>${r.so_lan_trung}</td></tr>`).join('')
        }</tbody></table>` : ``;
+  return results.length;
 }
 
 function renderMinPeriodPerDayTable(minPeriods){
-  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) return;
+  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) { $('#minPeriodDayContainer').innerHTML=''; return 0; }
   const dayTiet = {};
   Array.from(tbody.rows).forEach(tr=>{
     const { thu, tiet } = getThuTiet(tr);
@@ -285,10 +314,11 @@ function renderMinPeriodPerDayTable(minPeriods){
        </thead><tbody>${
          rows.map(r=>`<tr class="table-warning"><td>${r.label}</td><td>${r.thu}</td><td>${r.count}</td><td>${r.req}</td><td>${r.periods}</td></tr>`).join('')
        }</tbody></table>` : ``;
+  return rows.length;
 }
 
 function renderConsecutivePeriodsTable(){
-  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) return;
+  const tbody = $('#tkbTable')?.tBodies?.[0]; if (!tbody) { $('#consecutivePeriodsContainer').innerHTML=''; return 0; }
   const dayTiet = {};
   Array.from(tbody.rows).forEach(tr=>{
     const { thu, tiet } = getThuTiet(tr);
@@ -315,24 +345,56 @@ function renderConsecutivePeriodsTable(){
        </thead><tbody>${
          rows.map(r=>`<tr class="table-warning"><td>${r.label}</td><td>${r.thu}</td><td>${r.periods}</td><td>${r.note}</td></tr>`).join('')
        }</tbody></table>` : ``;
+  return rows.length;
 }
 
 function renderAllReports(){
   computeClassLabels();
-  renderDuplicateTable();
-  const v = parseInt($('#min_period_input')?.value || '2', 10) || 2;
-  renderMinPeriodPerDayTable(v);
-  renderConsecutivePeriodsTable();
+  const dup  = renderDuplicateTable();
+  const minV = renderMinPeriodPerDayTable(parseInt($('#min_period_input')?.value || '2', 10) || 2);
+  const split= renderConsecutivePeriodsTable();
+
+  // Cập nhật tóm tắt
+  $('#sumDup')  && ($('#sumDup').textContent   = dup);
+  $('#sumMin')  && ($('#sumMin').textContent   = minV);
+  $('#sumSplit')&& ($('#sumSplit').textContent = split);
 }
+
+/* ========= Điều hướng bằng phím mũi tên ========= */
+(() => {
+  const table = $('#tkbTable'); if (!table) return;
+  table.addEventListener('keydown', e=>{
+    if (!e.target.matches('.tkb-cell')) return;
+    const cur = e.target;
+    const row = cur.closest('tr');
+    const inputsRow = $$('input.tkb-cell', row);
+    const idxInRow = inputsRow.indexOf(cur);
+    const isArrow = ['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key);
+    if (!isArrow) return;
+
+    e.preventDefault();
+    if (e.key === 'ArrowLeft'  && idxInRow > 0)               inputsRow[idxInRow-1].focus();
+    if (e.key === 'ArrowRight' && idxInRow < inputsRow.length-1) inputsRow[idxInRow+1].focus();
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown'){
+      const bodyRows = Array.from(table.tBodies[0].rows);
+      const rIndex = bodyRows.indexOf(row);
+      const nextIndex = e.key === 'ArrowUp' ? rIndex-1 : rIndex+1;
+      if (nextIndex >= 0 && nextIndex < bodyRows.length){
+        const targetRow = bodyRows[nextIndex];
+        const tInputs = $$('input.tkb-cell', targetRow);
+        if (tInputs[idxInRow]) tInputs[idxInRow].focus();
+      }
+    }
+  });
+})();
 
 /* ========= Khởi tạo ========= */
 window.addEventListener('DOMContentLoaded', ()=>{
   {% if headers %}
     initAutosave();
-    renderAllReports(); // luôn vẽ khi vào trang
+    renderAllReports();
     $('#min_period_input')?.addEventListener('input', debounce(()=>{
-      const v = parseInt($('#min_period_input').value || '2', 10) || 2;
-      renderMinPeriodPerDayTable(v);
+      renderAllReports();
     }, 120));
   {% endif %}
 });
