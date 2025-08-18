@@ -58,20 +58,16 @@ def reset_tkb_session_with_notice():
 # ================== XỬ LÝ FILE VÀ TKB ==================
 
 def process_tkb_file(filepath):
-    """
-    Đọc file TKB an toàn:
-    - engine='openpyxl', dtype=str, fillna('') tránh NaN/mixed dtype
-    - Kiểm tra cấu trúc tối thiểu (mỗi lớp 2 cột: Môn, GV)
-    - Tránh IndexError khi thiếu cột GV
-    """
-    df = pd.read_excel(filepath, sheet_name=0, header=None, engine='openpyxl', dtype=str)
-    df = df.fillna('')
+    df = pd.read_excel(filepath, sheet_name=0, header=None,
+                       engine='openpyxl', dtype=str).fillna('')
 
-    # Cột 0 (Thứ) đôi khi trống ở vài dòng → ffill nếu tồn tại
+    # ---- CHỈNH Ở ĐÂY: lấp trống cột "Thứ" trong vùng dữ liệu (từ hàng 2)
     if 0 in df.columns:
-        df[0] = df[0].ffill()
+        s = df.loc[2:, 0].replace('', pd.NA)   # coi rỗng là NA
+        s = s.ffill().bfill()                  # điền từ trên xuống và từ dưới lên
+        df.loc[2:, 0] = s.fillna('')           # trả về chuỗi
 
-    # Lấy nhãn lớp ở hàng 0: các cột 2,4,6,... (mỗi lớp chiếm 2 cột: Môn, GV)
+    # Lấy nhãn lớp...
     class_labels = []
     for i in range(2, df.shape[1], 2):
         label = (df.iloc[0, i] or '').strip()
@@ -80,21 +76,15 @@ def process_tkb_file(filepath):
 
     num_classes = len(class_labels)
     if num_classes == 0:
-        raise ValueError(
-            "Không tìm thấy nhãn lớp ở hàng tiêu đề (hàng 1). "
-            "Hãy đặt tên lớp tại các cột 3,5,7,... (mỗi lớp 2 cột: Môn, GV)."
-        )
+        raise ValueError("Không tìm thấy nhãn lớp ở hàng 1...")
 
-    # Cần tối thiểu: 2 cột (Thứ, Tiết) + 2*num_classes cột cho các lớp
     min_cols = 2 + num_classes * 2
     if df.shape[1] < min_cols:
-        raise ValueError(
-            f"File thiếu cột cho đủ {num_classes} lớp. "
-            f"Cần tối thiểu {min_cols} cột (2 cột Thứ/Tiết + 2 cột mỗi lớp)."
-        )
+        raise ValueError(f"File thiếu cột...")
 
+    # Xây tkb_data: lúc này cột 0 đã được nhân bản đầy đủ => máy nhìn như ảnh 3
     tkb_data = []
-    for _, row in df.iloc[2:].iterrows():  # bỏ 2 hàng đầu: tiêu đề/định dạng
+    for _, row in df.iloc[2:].iterrows():
         time_info = row.iloc[:2].tolist() if df.shape[1] >= 2 else ['', '']
         class_data = []
         for i in range(2, 2 + num_classes * 2, 2):
