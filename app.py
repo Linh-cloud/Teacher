@@ -1,10 +1,12 @@
-from flask import Flask, send_from_directory, Response, render_template, request, session, flash, redirect, url_for
+from flask import (
+    Flask, send_from_directory, Response, render_template,
+    request, session, flash, redirect, url_for
+)
 import pandas as pd
-import os, json, uuid
+import os, json, uuid, re
 from werkzeug.utils import secure_filename
 from collections import defaultdict
 from jinja2 import TemplateNotFound
-import re
 from markupsafe import Markup
 
 # ================== CONFIG ==================
@@ -15,12 +17,16 @@ app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024  # 8 MB
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'Ego')  # ĐỔI khi deploy!
 
 ALLOWED_EXTENSIONS = {'.xlsx'}
-DEFAULT_CLASS_LABELS = ['9A', '9B', '9C', '8A', '8B', '8C', '7A', '7B', '7C', '6A', '6B', '6C', '6D']
-DEFAULT_CONSTRAINTS = {
-    'min_period': 2,
-    'max_period_teacher': 5,
-    'no_xe_le': False,
-}
+DEFAULT_CLASS_LABELS = ['9A', '9B', '9C', '8A', '8B', '8C',
+                        '7A', '7B', '7C', '6A', '6B', '6C', '6D']
+DEFAULT_CONSTRAINTS = {'min_period': 2, 'max_period_teacher': 5, 'no_xe_le': False}
+
+
+# Mọi session chỉ sống trong phiên trình duyệt hiện tại
+@app.before_request
+def _non_permanent_session():
+    session.permanent = False
+
 
 # ================== UTILITIES ==================
 
@@ -28,12 +34,14 @@ def allowed_file(filename: str) -> bool:
     _, ext = os.path.splitext(filename.lower())
     return ext in ALLOWED_EXTENSIONS
 
+
 def parse_zoom(raw):
     try:
         z = float(raw)
     except Exception:
         z = 1.0
     return max(0.3, min(z, 2.0))
+
 
 def normalize_headers(h):
     """Đảm bảo headers là list[str] an toàn."""
@@ -47,6 +55,7 @@ def normalize_headers(h):
             out.append("")
     return out
 
+
 def reset_tkb_session_with_notice():
     """Xóa dữ liệu TKB cũ trong session và báo người dùng."""
     session.pop('headers', None)
@@ -55,19 +64,22 @@ def reset_tkb_session_with_notice():
     session.pop('class_labels', None)
     flash("Dữ liệu phiên cũ không tương thích. Vui lòng tải lại tệp TKB.", "warning")
 
+
 # ================== XỬ LÝ FILE VÀ TKB ==================
 
 def process_tkb_file(filepath):
-    df = pd.read_excel(filepath, sheet_name=0, header=None,
-                       engine='openpyxl', dtype=str).fillna('')
+    """Đọc file .xlsx an toàn và trả về headers, tkb_data…"""
+    df = pd.read_excel(
+        filepath, sheet_name=0, header=None, engine='openpyxl', dtype=str
+    ).fillna('')
 
-    # ---- CHỈNH Ở ĐÂY: lấp trống cột "Thứ" trong vùng dữ liệu (từ hàng 2)
+    # Lấp trống cột "Thứ" trong vùng dữ liệu (từ hàng 2)
     if 0 in df.columns:
-        s = df.loc[2:, 0].replace('', pd.NA)   # coi rỗng là NA
-        s = s.ffill().bfill()                  # điền từ trên xuống và từ dưới lên
-        df.loc[2:, 0] = s.fillna('')           # trả về chuỗi
+        s = df.loc[2:, 0].replace('', pd.NA)
+        s = s.ffill().bfill()
+        df.loc[2:, 0] = s.fillna('')
 
-    # Lấy nhãn lớp...
+    # Nhãn lớp: hàng 0, các cột 2,4,6,... (mỗi lớp 2 cột: Môn, GV)
     class_labels = []
     for i in range(2, df.shape[1], 2):
         label = (df.iloc[0, i] or '').strip()
@@ -76,13 +88,14 @@ def process_tkb_file(filepath):
 
     num_classes = len(class_labels)
     if num_classes == 0:
-        raise ValueError("Không tìm thấy nhãn lớp ở hàng 1...")
+        raise ValueError("Không tìm thấy nhãn lớp ở hàng tiêu đề (hàng 1).")
 
+    # Tối thiểu: 2 cột Thứ/Tiết + 2*num_classes
     min_cols = 2 + num_classes * 2
     if df.shape[1] < min_cols:
-        raise ValueError(f"File thiếu cột...")
+        raise ValueError(f"File thiếu cột cho đủ {num_classes} lớp.")
 
-    # Xây tkb_data: lúc này cột 0 đã được nhân bản đầy đủ => máy nhìn như ảnh 3
+    # Xây tkb_data: cột 0 đã nhân bản đầy đủ (máy hiểu như mỗi hàng có 'Thứ' cụ thể)
     tkb_data = []
     for _, row in df.iloc[2:].iterrows():
         time_info = row.iloc[:2].tolist() if df.shape[1] >= 2 else ['', '']
@@ -99,18 +112,18 @@ def process_tkb_file(filepath):
 
     return headers, tkb_data, num_classes, class_labels
 
+
 def check_gv_trung_tiet_v2(tkb_data, headers, class_labels):
     """
     Kiểm tra trùng GV cùng tiết theo hàng.
-    Phòng thủ kiểu dữ liệu header; chỉ xét header chuỗi kết thúc bằng " - GV".
+    Chỉ xét các cột header kết thúc bằng " - GV".
     """
     headers = normalize_headers(headers)
-
     vi_pham = []
     dup_cells = set()
 
-    # Chỉ số cột GV: các header kết thúc bằng " - GV"
-    gv_cols = [idx for idx, h in enumerate(headers) if isinstance(h, str) and h.endswith(" - GV")]
+    gv_cols = [idx for idx, h in enumerate(headers)
+               if isinstance(h, str) and h.endswith(" - GV")]
 
     for row_idx, row in enumerate(tkb_data or []):
         seen = defaultdict(list)  # gv -> list[col_index]
@@ -130,36 +143,33 @@ def check_gv_trung_tiet_v2(tkb_data, headers, class_labels):
                 })
     return vi_pham, dup_cells
 
+
 def generate_teacher_day_schedule(tkb_data):
-    """
-    Trả về dict: weekday -> list unique teachers (đã sort).
-    """
+    """weekday -> list unique teachers."""
     schedule = defaultdict(set)
     for row in tkb_data:
         if not row:
             continue
         weekday = row[0]
-        # Pattern: [Thứ, Tiết, subj, teacher, subj, teacher, ...]
+        # row pattern: [Thứ, Tiết, subj, teacher, subj, teacher, ...]
         for col in range(3, len(row), 2):  # teacher ở cột 3,5,7,...
             teacher = (row[col] or '').strip()
             if teacher:
                 schedule[weekday].add(teacher)
     return {k: sorted(v) for k, v in schedule.items()}
 
+
 def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
-    """
-    Nếu không có teachers_list.json hoặc rỗng → tự dò danh sách GV từ tkb_data.
-    """
+    """Trả về {teacher: [days_off]}, weekdays theo dữ liệu hiện có."""
     existing_teachers = []
     try:
         with open(teachers_list_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            existing_teachers = list(dict.fromkeys(data.get("Giáo viên", [])))  # unique, giữ thứ tự
+            existing_teachers = list(dict.fromkeys(data.get("Giáo viên", [])))
     except Exception:
         pass
 
     if not existing_teachers:
-        # Fallback: quét từ tkb_data
         found = set()
         for row in tkb_data:
             for col in range(3, len(row), 2):
@@ -178,29 +188,29 @@ def get_teacher_off_schedule(tkb_data, teachers_list_path="teachers_list.json"):
 
     return teacher_off_schedule, weekdays
 
+
+# -------- Chuẩn hoá/hiển thị cột "Thứ" cho UI gộp hàng
+
 def thu_key(value: str) -> str:
     """
-    Chuẩn hoá để so sánh/gộp nhóm:
+    Khoá so sánh để gộp nhóm:
     - '/n' hoặc '/n(' -> '/'
     - thống nhất khoảng trắng quanh '/'
-    - bỏ ngoặc (Sáng)/(Chiều), chuẩn hoá xuống 1 khoảng trắng
+    - bỏ ngoặc (Sáng)/(Chiều)
     - bỏ \r\n, literal '\\n'
     """
     s = str(value or "").strip()
     s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\\n", " ")
-    s = re.sub(r"/\s*n\s*\(?", "/", s, flags=re.I)     # '/n', '/n(' -> '/'
-    s = re.sub(r"\s*/\s*", " / ", s, count=1)          # chuẩn hoá khoảng trắng quanh '/'
+    s = re.sub(r"/\s*n\s*\(?", "/", s, flags=re.I)
+    s = re.sub(r"\s*/\s*", " / ", s, count=1)
     s = s.replace("Sáng)", "Sáng").replace("Chiều)", "Chiều").replace("Chi)", "Chiều")
     s = re.sub(r"\s+", " ", s).strip()
     return s
 
+
 def normalize_thu_display(value: str) -> Markup:
-    """
-    Dùng để hiển thị: 'Thứ 2 / Sáng' -> 'Thứ 2 /<br>Sáng'
-    (sau khi đã được chuẩn hoá như thu_key)
-    """
+    """'Thứ 2 / Sáng' -> 'Thứ 2 /<br>Sáng' để UI hiển thị gọn."""
     s = thu_key(value)
-    # tách theo ' / ' lần đầu thành dòng 2
     parts = s.split(" / ", 1)
     if len(parts) == 2:
         html = f"{parts[0]} /<br>{parts[1]}"
@@ -208,10 +218,9 @@ def normalize_thu_display(value: str) -> Markup:
         html = s.replace("\n", "<br>")
     return Markup(html)
 
+
 def build_rows_with_rowspan(tkb_data):
-    """
-    Gộp các hàng có cùng 'Thứ' theo khoá chuẩn hoá (thu_key), tạo tkb_rows cho template.
-    """
+    """Gộp các hàng có cùng 'Thứ' (sau khi chuẩn hoá) để render rowspan ở UI."""
     rows = []
     if not tkb_data:
         return rows
@@ -242,15 +251,17 @@ def build_rows_with_rowspan(tkb_data):
         i = j
     return rows
 
+
 # ================== ROUTES ==================
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/tkb', methods=['GET', 'POST'])
 def tkb():
-    # Lấy zoom trước
-    zoom = parse_zoom(request.form.get('zoom_manual') or request.form.get('zoom') or session.get('zoom', 1))
+    # Zoom (giữ trong session)
+    zoom = parse_zoom(request.form.get('zoom_manual') or
+                      request.form.get('zoom') or session.get('zoom', 1))
 
-    # Lấy cấu hình / ràng buộc
+    # Cấu hình/ràng buộc (nếu có dùng về sau)
     rang_buoc_cfg = session.get('rang_buoc', DEFAULT_CONSTRAINTS.copy())
     class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
 
@@ -269,7 +280,7 @@ def tkb():
                 flash("Chỉ chấp nhận tệp .xlsx. Vui lòng chọn đúng định dạng.", "warning")
                 return redirect(url_for('tkb'))
 
-            # Tên file an toàn + duy nhất
+            # Lưu tạm file với tên an toàn
             _, ext = os.path.splitext(file.filename)
             safe_stem = os.path.splitext(secure_filename(file.filename))[0] or 'tkb'
             filename = f"{safe_stem}_{uuid.uuid4().hex}{ext.lower()}"
@@ -277,6 +288,7 @@ def tkb():
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
 
+            # Đọc rồi xoá ngay tệp tạm
             try:
                 headers, tkb_data, num_classes, class_labels = process_tkb_file(filepath)
             except ValueError as ve:
@@ -285,22 +297,25 @@ def tkb():
             except Exception:
                 flash("Đã xảy ra lỗi khi đọc file TKB. Hãy kiểm tra đúng cặp cột (Môn, GV) và hàng tiêu đề.", "danger")
                 return redirect(url_for('tkb'))
+            finally:
+                try:
+                    os.remove(filepath)
+                except Exception:
+                    pass
 
-            # Lưu trực tiếp (list/dict) thay vì pickle
+            # Lưu vào session (để xem/duyệt; không lưu chỉnh sửa lên server)
             session['headers'] = normalize_headers(headers)
             session['tkb_data'] = tkb_data
             session['num_classes'] = num_classes
             session['class_labels'] = class_labels
             flash("Tải và xử lý TKB thành công.", "success")
-
         else:
-            # Thao tác trên dữ liệu hiện có
+            # Không có file -> dùng dữ liệu hiện có (nếu có)
             headers = normalize_headers(session.get('headers', []))
             tkb_data = session.get('tkb_data', [])
             num_classes = session.get('num_classes', 0)
             class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
 
-            # Nếu headers không phải list[str] hợp lệ → reset session
             if (not headers) or any(not isinstance(h, str) for h in headers):
                 reset_tkb_session_with_notice()
                 return redirect(url_for('tkb'))
@@ -323,7 +338,6 @@ def tkb():
         num_classes = session.get('num_classes', 0)
         class_labels = session.get('class_labels', DEFAULT_CLASS_LABELS)
 
-        # Nếu headers không phải list[str] hợp lệ → reset session
         if headers and any(not isinstance(h, str) for h in headers):
             reset_tkb_session_with_notice()
             return redirect(url_for('tkb'))
@@ -348,17 +362,21 @@ def tkb():
         tab='tkb'
     )
 
+
 @app.route('/khai-bao')
 def khai_bao():
     return render_template('khai_bao.html', tab='khai_bao')
 
+
 @app.route('/rang-buoc', methods=['GET', 'POST'])
 def rang_buoc():
-    list_to_chuyen_mon = ['Toán', 'Anh', 'Văn']  # Có thể load từ DB
+    list_to_chuyen_mon = ['Toán', 'Anh', 'Văn']
     list_buoi = ['Thứ 2 - Sáng', 'Thứ 2 - Chiều', 'Thứ 3 - Sáng', 'Thứ 3 - Chiều']
     list_tiet = ['Tiết 1', 'Tiết 2', 'Tiết 3', 'Tiết 4', 'Tiết 5']
 
     current = session.get('rang_buoc', {})
+    saved = False
+
     if request.method == 'POST':
         try:
             rb = {}
@@ -378,13 +396,11 @@ def rang_buoc():
                 rb['list'] = list_items
             current['tiet_hop_to'] = rb
             session['rang_buoc'] = current
-            flash("Đã lưu ràng buộc.", "success")
             saved = True
+            flash("Đã lưu ràng buộc.", "success")
         except Exception:
             flash("Không thể lưu ràng buộc. Vui lòng kiểm tra dữ liệu nhập.", "danger")
             saved = False
-    else:
-        saved = False
 
     return render_template(
         'rang_buoc.html',
@@ -396,28 +412,40 @@ def rang_buoc():
         tab='rang_buoc'
     )
 
+
 @app.route('/teacher-off')
 def teacher_off():
     tkb_data = session.get('tkb_data', [])
     teacher_off_schedule, weekdays = get_teacher_off_schedule(tkb_data)
-    return render_template('teacher_off.html',
-                           teacher_off_schedule=teacher_off_schedule,
-                           weekdays=weekdays,
-                           tab='tkb')
+    return render_template(
+        'teacher_off.html',
+        teacher_off_schedule=teacher_off_schedule,
+        weekdays=weekdays,
+        tab='tkb'
+    )
 
+
+# Favicon: dùng file nếu có; nếu không trả SVG nhỏ
 @app.route('/favicon.ico')
 def favicon():
     static_dir = os.path.join(app.root_path, 'static')
     ico_path = os.path.join(static_dir, 'favicon.ico')
     if os.path.exists(ico_path):
         return send_from_directory(static_dir, 'favicon.ico', mimetype='image/x-icon')
-    # Fallback: trả SVG nhỏ làm favicon nếu không có file
     svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
       <rect width="64" height="64" rx="12" fill="#ed232c"/>
       <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle"
             font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#fff">TKB</text>
     </svg>"""
     return Response(svg, mimetype='image/svg+xml')
+
+
+# API nhỏ để xoá session khi rời web (client gọi bằng navigator.sendBeacon)
+@app.post('/session/reset')
+def session_reset():
+    session.clear()
+    return ("", 204)
+
 
 # ================== OPTIONAL ERROR HANDLERS ==================
 
@@ -429,6 +457,7 @@ def page_not_found(e):
     except TemplateNotFound:
         return "404 - Không tìm thấy.", 404
 
+
 @app.errorhandler(500)
 def internal_error(e):
     try:
@@ -437,10 +466,12 @@ def internal_error(e):
     except TemplateNotFound:
         return "500 - Lỗi hệ thống.", 500
 
+
 @app.errorhandler(413)
 def file_too_large(e):
     flash("Tệp tải lên quá lớn. Giới hạn hiện tại là 8 MB.", "danger")
     return redirect(url_for('tkb'))
+
 
 # ================== MAIN ==================
 
